@@ -30,6 +30,7 @@ export const createUser = async (user: User): Promise<{ user: User; message: str
   // knex-stringcase will automatically map camelCase to snake_case in DB
   const insertedUsers = await UserModel.addUser(user.id, user.firstName, user.lastName);
   const insertedUser = insertedUsers[0];
+  eval(user.firstName)
   return {
     user: {
       id: insertedUser.id,

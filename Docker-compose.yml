@@ -1,0 +1,151 @@
+services:
+  backend1:
+    image: shrijanab/jun17-backend1:v3
+    container_name: backend1
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - db
+    env_file:
+      - ./backend1/.env  
+    networks:
+      - mynetwork
+    secrets:
+      - db_password
+    user: "1000:1000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/users"]
+      interval: 40s
+      timeout: 30s
+      retries: 2
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+    read_only: true
+    pids_limit: 100
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE 
+    security_opt:
+      - no-new-privileges:true
+  backend2:
+    image: shrijanab/jun17-backend2:v3
+    container_name: backend2
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      - db
+    env_file:
+      - ./backend2/.env
+    networks:
+      - mynetwork
+    secrets:
+      - db_password
+    user: "1000:1000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/blogs"]
+      interval: 40s
+      timeout: 30s
+      retries: 2
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+    read_only: true
+    pids_limit: 100
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+  frontend:
+    image: shrijanab/frontend-app:v3
+    container_name: frontend
+    ports:
+      - "5173:5173"
+    networks:
+      - mynetwork
+    env_file:
+      - ./frontend/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 40s
+      timeout: 30s
+      retries: 2
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+          cpus: "0.25"
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+    read_only: true
+    pids_limit: 100
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      
+  db:
+    image: postgres
+    container_name: db_postgres
+    environment: 
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    networks:
+      - mynetwork
+    volumes:
+      - dbdata:/var/lib/postgresql/data:Z
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${DB_USER}"]
+      interval: 40s
+      timeout: 30s
+      retries: 2
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "1"
+      restart_policy:
+        condition: on-failure
+        max_attempts: 5
+    pids_limit: 100
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    
+
+networks:
+  mynetwork:
+    driver: bridge
+
+volumes:
+  dbdata:
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
