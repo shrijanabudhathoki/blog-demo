@@ -203,10 +203,10 @@ jobs:
     - name: SSH and Deploy Frontend
       uses: appleboy/ssh-action@v1
       with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.SSH_PORT }}
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
         script: |
           sudo docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
           sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
@@ -222,10 +222,10 @@ jobs:
     - name: SSH and Deploy Backend
       uses: appleboy/ssh-action@v1
       with:
-        host: ${{ secrets.SSH_HOST }}
-        username: ${{ secrets.SSH_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: ${{ secrets.SSH_PORT }}
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
         script: |
           sudo docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_TOKEN }}
           sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ needs.build_and_push_backend.outputs.docker_tag }}
