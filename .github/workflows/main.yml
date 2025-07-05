@@ -33,7 +33,7 @@ jobs:
 
   build_and_push_backend:
     if: github.event_name == 'push'
-    runs-on: backend
+    runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
@@ -126,7 +126,7 @@ jobs:
   
   build_and_push_frontend:
     if: github.event_name == 'push'
-    runs-on: frontend
+    runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
