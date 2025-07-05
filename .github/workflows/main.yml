@@ -33,7 +33,7 @@ jobs:
 
   build_and_push_backend:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: backend
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
@@ -126,7 +126,7 @@ jobs:
   
   build_and_push_frontend:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: frontend
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
@@ -197,7 +197,7 @@ jobs:
 
   deploy_frontend:
     if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
-    runs-on: ubuntu-latest
+    runs-on: frontend
     needs: build_and_push_frontend
     steps:
     - name: SSH and Deploy Frontend
@@ -216,7 +216,7 @@ jobs:
 
   deploy_backend:
     if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
-    runs-on: ubuntu-latest
+    runs-on: backend
     needs: build_and_push_backend
     steps:
     - name: SSH and Deploy Backend
