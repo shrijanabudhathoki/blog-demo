@@ -239,4 +239,4 @@ jobs:
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-      DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
+      DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }} 
