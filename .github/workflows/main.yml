@@ -43,7 +43,7 @@ jobs:
     - name: Checkout the repo
       uses: actions/checkout@v4
 
-    - name: dorny/paths-filter@v3
+    - uses: dorny/paths-filter@v3
       id: filter
       with:
         filters: |
@@ -136,7 +136,7 @@ jobs:
     - name: Checkout the repo
       uses: actions/checkout@v4
 
-    - name: dorny/paths-filter@v3
+    - uses: dorny/paths-filter@v3
       id: filter
       with:
         filters: |
