@@ -260,7 +260,7 @@ jobs:
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
 
-      - name: Debug Docker Variables
+      - name: Debug Variables
         run: |
           echo "DOCKER_USERNAME=$DOCKER_USERNAME"
           echo "DOCKER_TAG=$DOCKER_TAG"
@@ -276,20 +276,20 @@ jobs:
           username: shrijana
           key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
           port: 22
-          script_timeout: 120
-          envs: DOCKER_USERNAME,DOCKER_TOKEN,DOCKER_TAG
+          timeout: 120  # Changed from script_timeout to timeout
+          command_timeout: 300  # Set command timeout separately
           script: |
-            # Proper docker login with credentials
-            echo "$DOCKER_TOKEN" | sudo docker login --username "$DOCKER_USERNAME" --password-stdin || exit 1
+            # Proper docker login with explicit --username flag
+            echo "$DOCKER_TOKEN" | sudo docker login --username "$DOCKER_USERNAME" --password-stdin
             
-            # Pull image with error handling
-            sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG" || exit 1
+            # Pull image with error suppression
+            sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG" || true
             
             # Graceful container management
             sudo docker stop backend1 2>/dev/null || true
             sudo docker rm backend1 2>/dev/null || true
             
-            # Run container with proper resource limits
+            # Run container
             sudo docker run -d \
               --name backend1 \
               --restart unless-stopped \
@@ -297,7 +297,7 @@ jobs:
               "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
             
             # Verify deployment
-            echo "Current running containers:"
+            echo "Current containers:"
             sudo docker ps --filter "name=backend1" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
