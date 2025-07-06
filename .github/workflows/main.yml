@@ -33,7 +33,7 @@ jobs:
 
   build_and_push_backend:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: backend
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
@@ -124,151 +124,101 @@ jobs:
         name: backend2-artifact
         path: backend2-artifact.tar
   
-  # build_and_push_frontend:
-  #   if: github.event_name == 'push'
-  #   runs-on: frontend
-  #   environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
-  #   outputs:
-  #     docker_tag: ${{ steps.vars.outputs.tag }}
-  #     changed_files: ${{ steps.changed.outputs.changed_files }}
+  build_and_push_frontend:
+    if: github.event_name == 'push'
+    runs-on: frontend
+    environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
+    outputs:
+      docker_tag: ${{ steps.vars.outputs.tag }}
+      changed_files: ${{ steps.changed.outputs.changed_files }}
     
-  #   steps:
-  #   - name: Checkout the repo
-  #     uses: actions/checkout@v4
+    steps:
+    - name: Checkout the repo
+      uses: actions/checkout@v4
 
-  #   - uses: dorny/paths-filter@v3
-  #     id: filter
-  #     with:
-  #       filters: |
-  #         frontend:
-  #             - 'frontend/**'
-  #             - '!frontend/README.md'
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          frontend:
+              - 'frontend/**'
+              - '!frontend/README.md'
 
-  #   - name: Set Changed Files Flag
-  #     id: changed
-  #     run: |
-  #       if [[ "${{ steps.filter.outputs.frontend }}" == "true" ]]; then
-  #         echo "changed_files=true" >> $GITHUB_OUTPUT
-  #       else
-  #         echo "changed_files=false" >> $GITHUB_OUTPUT
-  #       fi
+    - name: Set Changed Files Flag
+      id: changed
+      run: |
+        if [[ "${{ steps.filter.outputs.frontend }}" == "true" ]]; then
+          echo "changed_files=true" >> $GITHUB_OUTPUT
+        else
+          echo "changed_files=false" >> $GITHUB_OUTPUT
+        fi
 
-  #   - name: Set Tag for Docker Image
-  #     id: vars
-  #     run : |
-  #       if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-  #         VERSION=$(cat VERSION)
-  #         echo "tag=$VERSION" >> $GITHUB_OUTPUT
-  #       else
-  #         BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
-  #         SHORT_SHA=${GITHUB_SHA::7}
-  #         echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
-  #       fi
+    - name: Set Tag for Docker Image
+      id: vars
+      run : |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          VERSION=$(cat VERSION)
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+        else
+          BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+          SHORT_SHA=${GITHUB_SHA::7}
+          echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+        fi
 
-  #   - name: Login to DockerHub
-  #     if: steps.filter.outputs.frontend == 'true'
-  #     uses: docker/login-action@v3
-  #     with:
-  #       username: ${{secrets.DOCKER_USERNAME}}
-  #       password: ${{secrets.DOCKER_TOKEN}}
+    - name: Login to DockerHub
+      if: steps.filter.outputs.frontend == 'true'
+      uses: docker/login-action@v3
+      with:
+        username: ${{secrets.DOCKER_USERNAME}}
+        password: ${{secrets.DOCKER_TOKEN}}
       
-  #   - name: Set up Docker Buildx
-  #     if: steps.filter.outputs.frontend == 'true'
-  #     uses: docker/setup-buildx-action@v3
+    - name: Set up Docker Buildx
+      if: steps.filter.outputs.frontend == 'true'
+      uses: docker/setup-buildx-action@v3
           
-  #   - name: Build and Push Frontend Image
-  #     if: steps.filter.outputs.frontend == 'true'
-  #     uses: docker/build-push-action@v6
-  #     with:
-  #         context: ./frontend
-  #         file: ./frontend/Dockerfile
-  #         push: true
-  #         tags: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
-  #         outputs: type=oci, dest=frontend-artifact.tar
+    - name: Build and Push Frontend Image
+      if: steps.filter.outputs.frontend == 'true'
+      uses: docker/build-push-action@v6
+      with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=oci, dest=frontend-artifact.tar
 
-  #   - name: Upload Frontend Artifacts
-  #     if: steps.filter.outputs.frontend == 'true'
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: frontend-artifact
-  #       path: frontend-artifact.tar
+    - name: Upload Frontend Artifacts
+      if: steps.filter.outputs.frontend == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-artifact
+        path: frontend-artifact.tar
 
-  # deploy_frontend:
-  #   if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
-  #   runs-on: frontend
-  #   needs: build_and_push_frontend
-  #   steps:
-  #   - name: SSH and Deploy Frontend
-  #     uses: appleboy/ssh-action@v1
-  #     with:
-  #       host: ${{ secrets.SERVER_IP }}
-  #       username: ${{ secrets.SERVER_USER }}
-  #       key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #       port: ${{ secrets.SERVER_PORT }}
-  #       script: |
-  #         echo '${{ secrets.DOCKER_TOKEN }}' | sudo docker login -u '${{ secrets.DOCKER_USERNAME }}' --password-stdin
-  #         sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
-  #         sudo docker stop frontend || true
-  #         sudo docker rm frontend || true
-  #         sudo docker run -d --name frontend -p 80:80 ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
-
-  # deploy_backend:
-  #   if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
-  #   runs-on: ubuntu-latest
-  #   needs: build_and_push_backend
-  #   steps:
-  #     - name: Deploy Backend
-  #       uses: appleboy/ssh-action@v1
-  #       with:
-  #         host: 192.168.77.138
-  #         username: shrijana
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         port: 22
-  #         script: |
-  #           echo "$DOCKER_TOKEN" | sudo docker login -u "$DOCKER_USERNAME" --password-stdin
-  #           sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-  #           sudo docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-  #           sudo docker stop backend1 || true
-  #           sudo docker stop backend2 || true
-  #           sudo docker rm backend1 || true
-  #           sudo docker rm backend2 || true
-  #           sudo docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-  #           sudo docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-  #       env:
-  #         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  #         DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-  #         DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
+  deploy_frontend:
+    if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
+    runs-on: frontend
+    needs: build_and_push_frontend
+    steps:
+    - name: SSH and Deploy Frontend
+      uses: appleboy/ssh-action@v1
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+        port: ${{ secrets.SERVER_PORT }}
+        script: |
+          echo '${{ secrets.DOCKER_TOKEN }}' | sudo docker login -u '${{ secrets.DOCKER_USERNAME }}' --password-stdin
+          sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
+          sudo docker stop frontend || true
+          sudo docker rm frontend || true
+          sudo docker run -d --name frontend -p 80:80 ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
 
   deploy_backend:
     if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
     runs-on: backend
     needs: build_and_push_backend
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup SSH environment
-        run: |
-          mkdir -p ~/.ssh
-          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 644 ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/deploy_key
-        env:
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-          SSH_PRIVATE_KEY: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-
-      - name: Debug Variables
-        run: |
-          echo "DOCKER_USERNAME=$DOCKER_USERNAME"
-          echo "DOCKER_TAG=$DOCKER_TAG"
-          echo "Key fingerprint: $(ssh-keygen -lf ~/.ssh/deploy_key)"
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
-
       - name: Deploy Backend
         uses: appleboy/ssh-action@v1
         with:
@@ -276,30 +226,19 @@ jobs:
           username: shrijana
           key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
           port: 22
-          timeout: 120  # Changed from script_timeout to timeout
-          command_timeout: 300  # Set command timeout separately
           script: |
-            # Proper docker login with explicit --username flag
-            docker login -u ${{ secrets.DOCKER_USERNAME }} -p {{ secrets.DOCKER_TOKEN }} docker.io
-            
-            # Pull image with error suppression
-            sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG" || true
-            
-            # Graceful container management
-            sudo docker stop backend1 2>/dev/null || true
-            sudo docker rm backend1 2>/dev/null || true
-            
-            # Run container
-            sudo docker run -d \
-              --name backend1 \
-              --restart unless-stopped \
-              -p 8080:8080 \
-              "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-            
-            # Verify deployment
-            echo "Current containers:"
-            sudo docker ps --filter "name=backend1" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            echo "$DOCKER_TOKEN" | sudo docker login -u "$DOCKER_USERNAME" --password-stdin
+            sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+            sudo docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
+            sudo docker stop backend1 || true
+            sudo docker stop backend2 || true
+            sudo docker rm backend1 || true
+            sudo docker rm backend2 || true
+            sudo docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+            sudo docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
           DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
+
+  
