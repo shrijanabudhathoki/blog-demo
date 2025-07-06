@@ -18,6 +18,28 @@ on:
       - "!**/README.md"
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend1: ${{ steps.filter.outputs.backend1 }}
+      backend2: ${{ steps.filter.outputs.backend2 }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend1:
+              - 'backend1/**'
+              - '!backend1/README.md'
+            backend2:
+              - 'backend2/**'
+              - '!backend2/README.md'
+            frontend:
+              - 'frontend/**'
+              - '!frontend/README.md'
+
 
   pull_request_checks:
     if: github.event_name == 'pull_request'
@@ -40,7 +62,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_and_push_backend:
-    if: github.event_name == 'push'
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend1 == 'true' || needs.detect-changes.outputs.backend2 == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
@@ -133,7 +156,8 @@ jobs:
         path: backend2-artifact.tar
   
   build_and_push_frontend:
-    if: github.event_name == 'push'
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
