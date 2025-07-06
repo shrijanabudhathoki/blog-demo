@@ -280,7 +280,7 @@ jobs:
           command_timeout: 300  # Set command timeout separately
           script: |
             # Proper docker login with explicit --username flag
-            echo "$DOCKER_TOKEN" | sudo docker login --username "$DOCKER_USERNAME" --password-stdin
+            docker login -u ${{ secrets.DOCKER_USERNAME }} -p {{ secrets.DOCKER_TOKEN }} docker.io
             
             # Pull image with error suppression
             sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG" || true
