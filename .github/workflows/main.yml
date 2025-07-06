@@ -35,9 +35,9 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
-      backend1: ${{ steps.filter.outputs.backend1 }}
-      backend2: ${{ steps.filter.outputs.backend2 }}
-      frontend: ${{ steps.filter.outputs.frontend }}
+      backend1_changed: ${{ steps.filter.outputs.backend1 }}
+      backend2_changed: ${{ steps.filter.outputs.backend2 }}
+      frontend_changed: ${{ steps.filter.outputs.frontend }}
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
 
   build_and_push_backend:
     needs: detect_changes
-    if: needs.detect_changes.outputs.backend1 == 'true' || needs.detect_changes.outputs.backend2 == 'true'
+    if: needs.detect_changes.outputs.backend1_changed == 'true' || needs.detect_changes.outputs.backend2_changed == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
@@ -90,7 +90,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and Push Backend1 Image
-        if: needs.detect_changes.outputs.backend1 == 'true'
+        if: needs.detect_changes.outputs.backend1_changed == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./backend1
@@ -102,14 +102,14 @@ jobs:
           outputs: type=oci, dest=backend1-artifact.tar
 
       - name: Upload Backend1 Artifacts
-        if: needs.detect_changes.outputs.backend1 == 'true'
+        if: needs.detect_changes.outputs.backend1_changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: backend1-artifact
           path: backend1-artifact.tar
 
       - name: Build and Push Backend2 Image
-        if: needs.detect_changes.outputs.backend2 == 'true'
+        if: needs.detect_changes.outputs.backend2_changed == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./backend2
@@ -121,7 +121,7 @@ jobs:
           outputs: type=oci, dest=backend2-artifact.tar
 
       - name: Upload Backend2 Artifacts
-        if: needs.detect_changes.outputs.backend2 == 'true'
+        if: needs.detect_changes.outputs.backend2_changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: backend2-artifact
@@ -129,7 +129,7 @@ jobs:
 
   build_and_push_frontend:
     needs: detect_changes
-    if: needs.detect_changes.outputs.frontend == 'true'
+    if: needs.detect_changes.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
