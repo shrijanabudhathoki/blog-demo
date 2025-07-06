@@ -243,51 +243,36 @@ jobs:
 
   deploy_backend:
     if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
+    runs-on: backend  # since you said your runner is in 192.168.77.137
     needs: build_and_push_backend
-    runs-on: backend  # Must use self-hosted runner for private network access
-    
     steps:
-    - name: Setup SSH Key
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SERVER_PRIVATE_SSH_KEY }}" > ~/.ssh/deploy_key
-        chmod 700 ~/.ssh
-        chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -p ${{ secrets.SERVER_PORT || 22 }} ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Verify SSH Connection
-      run: |
-        ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=no \
-            -p ${{ secrets.SERVER_PORT || 22 }} \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} \
-            "echo 'SSH connection successful'"
+      - name: Setup SSH known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
-    - name: Deploy Containers
-      run: |
-        ssh -i ~/.ssh/deploy_key \
-            -p ${{ secrets.SERVER_PORT || 22 }} \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} <<'EOF'
-        # Proper docker login with credentials
-        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
-        
-        # Pull images with proper formatting
-        docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-        docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-        
-        # Stop and remove existing containers with error suppression
-        docker stop backend1 || true
-        docker stop backend2 || true
-        docker rm backend1 || true
-        docker rm backend2 || true
-        
-        # Run new containers with proper formatting
-        docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-        docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-        EOF
-      env:
-        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-        DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
-
-        
+      - name: Deploy Backend
+        uses: appleboy/ssh-action@v1
+        with:
+          host: 192.168.77.138
+          username: shrijana
+          key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+          port: 22
+          script: |
+            echo "${DOCKER_TOKEN}" | sudo docker login -u "${DOCKER_USERNAME}" --password-stdin
+            sudo docker pull "${DOCKER_USERNAME}/blog-backend1:${DOCKER_TAG}"
+            sudo docker pull "${DOCKER_USERNAME}/blog-backend2:${DOCKER_TAG}"
+            sudo docker stop backend1 || true
+            sudo docker stop backend2 || true
+            sudo docker rm backend1 || true
+            sudo docker rm backend2 || true
+            sudo docker run -d --name backend1 -p 8080:8080 "${DOCKER_USERNAME}/blog-backend1:${DOCKER_TAG}"
+            sudo docker run -d --name backend2 -p 8081:8081 "${DOCKER_USERNAME}/blog-backend2:${DOCKER_TAG}"
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+          DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
