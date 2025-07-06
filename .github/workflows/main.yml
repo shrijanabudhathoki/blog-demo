@@ -267,14 +267,27 @@ jobs:
       run: |
         ssh -i ~/.ssh/deploy_key \
             -p ${{ secrets.SERVER_PORT || 22 }} \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} <<EOF
-        echo "${{ secrets.DOCKER_TOKEN }}" | sudo docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-        sudo docker pull "${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ needs.build_and_push_backend.outputs.docker_tag }}"
-        sudo docker pull "${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ needs.build_and_push_backend.outputs.docker_tag }}"
-        sudo docker stop backend1 || true
-        sudo docker stop backend2 || true
-        sudo docker rm backend1 || true
-        sudo docker rm backend2 || true
-        sudo docker run -d --name backend1 -p 8080:8080 "${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ needs.build_and_push_backend.outputs.docker_tag }}"
-        sudo docker run -d --name backend2 -p 8081:8081 "${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ needs.build_and_push_backend.outputs.docker_tag }}"
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} <<'EOF'
+        # Proper docker login with credentials
+        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        
+        # Pull images with proper formatting
+        docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+        docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
+        
+        # Stop and remove existing containers with error suppression
+        docker stop backend1 || true
+        docker stop backend2 || true
+        docker rm backend1 || true
+        docker rm backend2 || true
+        
+        # Run new containers with proper formatting
+        docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+        docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
         EOF
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+        DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
+
+        
