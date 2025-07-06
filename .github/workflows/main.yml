@@ -39,6 +39,7 @@ jobs:
             frontend:
               - 'frontend/**'
               - '!frontend/README.md'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
 
   pull_request_checks:
