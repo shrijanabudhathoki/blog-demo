@@ -42,5 +42,10 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: frontend/dist
+<<<<<<< HEAD
 
        
+=======
+        publish_branch: gh-pages
+       
+>>>>>>> 89738ae103a2417fad6e4b1a84b137985dd20566
