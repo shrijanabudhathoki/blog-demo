@@ -1,0 +1,46 @@
+name: Frontend Build and Deploy
+
+on: workflow_dispatch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+
+    - name: Install dependencies
+      run: |
+        cd frontend
+        yarn install
+      shell: bash
+
+    - name: Cache node modules
+      uses: actions/cache@v3
+      with:
+        path: frontend/node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('frontend/package-lock.json', 'frontend/yarn.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        yarn build
+      env:
+        VITE_CLERK_PUBLISHABLE_KEY: pk_test_cGxlYXNpbmctc3R1cmdlb24tMTEuY2xlcmsuYWNjb3VudHMuZGV2JA
+        shell: bash
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v4
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: frontend/dist
+
+       
