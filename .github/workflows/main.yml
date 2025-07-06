@@ -243,17 +243,31 @@ jobs:
 
   deploy_backend:
     if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
-    runs-on: backend  # since you said your runner is in 192.168.77.137
+    runs-on: backend
     needs: build_and_push_backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH known_hosts
+      - name: Setup SSH environment
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 644 ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key
+        env:
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+
+      - name: Debug Docker Variables
+        run: |
+          echo "DOCKER_USERNAME=$DOCKER_USERNAME"
+          echo "DOCKER_TAG=$DOCKER_TAG"
+          echo "Key fingerprint: $(ssh-keygen -lf ~/.ssh/deploy_key)"
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
 
       - name: Deploy Backend
         uses: appleboy/ssh-action@v1
@@ -262,16 +276,29 @@ jobs:
           username: shrijana
           key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
           port: 22
+          script_timeout: 120
+          envs: DOCKER_USERNAME,DOCKER_TOKEN,DOCKER_TAG
           script: |
-            echo "${DOCKER_TOKEN}" | sudo docker login -u "${DOCKER_USERNAME}" --password-stdin
-            sudo docker pull "${DOCKER_USERNAME}/blog-backend1:${DOCKER_TAG}"
-            sudo docker pull "${DOCKER_USERNAME}/blog-backend2:${DOCKER_TAG}"
-            sudo docker stop backend1 || true
-            sudo docker stop backend2 || true
-            sudo docker rm backend1 || true
-            sudo docker rm backend2 || true
-            sudo docker run -d --name backend1 -p 8080:8080 "${DOCKER_USERNAME}/blog-backend1:${DOCKER_TAG}"
-            sudo docker run -d --name backend2 -p 8081:8081 "${DOCKER_USERNAME}/blog-backend2:${DOCKER_TAG}"
+            # Proper docker login with credentials
+            echo "$DOCKER_TOKEN" | sudo docker login --username "$DOCKER_USERNAME" --password-stdin || exit 1
+            
+            # Pull image with error handling
+            sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG" || exit 1
+            
+            # Graceful container management
+            sudo docker stop backend1 2>/dev/null || true
+            sudo docker rm backend1 2>/dev/null || true
+            
+            # Run container with proper resource limits
+            sudo docker run -d \
+              --name backend1 \
+              --restart unless-stopped \
+              -p 8080:8080 \
+              "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+            
+            # Verify deployment
+            echo "Current running containers:"
+            sudo docker ps --filter "name=backend1" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
