@@ -31,12 +31,10 @@ jobs:
         
     - name: Install dependencies
       run: |
-        cd frontend
         yarn install
 
     - name: Build frontend
       run: |
-        cd frontend
         yarn build
       env:
         VITE_CLERK_PUBLISHABLE_KEY: pk_test_cGxlYXNpbmctc3R1cmdlb24tMTEuY2xlcmsuYWNjb3VudHMuZGV2JA
