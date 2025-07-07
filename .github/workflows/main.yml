@@ -52,7 +52,7 @@ jobs:
               - 'frontend/**'
 
   build_and_push_backend:
-    needs: detect_changes
+    needs: backend
     if: needs.detect_changes.outputs.backend1 == 'true' || needs.detect_changes.outputs.backend2 == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
@@ -121,7 +121,7 @@ jobs:
           path: backend2-artifact.tar
 
   build_and_push_frontend:
-    needs: detect_changes
+    needs: frontend
     if: needs.detect_changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
