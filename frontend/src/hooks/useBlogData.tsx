@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuth } from "@clerk/clerk-react";
+import { BACKEND1_BASE_URL,BACKEND2_BASE_URL } from "../api";
 
 interface Blog {
   id: number;
@@ -22,10 +23,10 @@ interface BlogComment {
 }
 
 // BLOG API (localhost:3001)
-const BLOG_API = "http://localhost:5435/api/blogs";
-const COMMENTS_API = "http://localhost:5435/api/comments";
+const BLOG_API = `${BACKEND2_BASE_URL}/api/blogs`;
+const COMMENTS_API = `${BACKEND2_BASE_URL}/api/comments`;
 // USER API (localhost:3000)
-const USER_API = "http://localhost:5434/api/users";
+const USER_API = `${BACKEND1_BASE_URL}/api/users`;
 
 export function useBlog(id?: string) {
   const [blog, setBlog] = useState<Blog | null>(null);

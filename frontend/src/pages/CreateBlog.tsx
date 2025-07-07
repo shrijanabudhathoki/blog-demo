@@ -23,8 +23,11 @@ import axios from "axios";
 import { Link } from "react-router-dom";
 import { openPreview } from "../util";
 
-const USER_API = "http://localhost:3000/api/users";
-const BLOG_API = "http://localhost:3001/api/blogs";
+import { BACKEND1_BASE_URL ,BACKEND2_BASE_URL} from "../api";
+
+const USER_API = `${BACKEND1_BASE_URL}/api/users`;
+const BLOG_API = `${BACKEND2_BASE_URL}/api/blogs`;
+
 
 const generatePreview = async (arg: string) => {
 //     const parser = new DOMParser();

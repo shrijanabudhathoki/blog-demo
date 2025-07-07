@@ -1,26 +1,13 @@
-FROM node:20-alpine AS builder
+FROM node:18 AS BUILD
 
-WORKDIR /app
-
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
-
+WORKDIR /App
 COPY . .
-
+RUN npm install
 RUN yarn build
 
+FROM nginx:1.27.5-alpine AS PROD
 
-# Runtime Stage
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
-RUN yarn global add serve
-
-
-COPY --from=builder /app/dist /app/dist
-
-EXPOSE 5173
-
-CMD ["serve", "-s", "dist", "-l", "5173"]
-
+COPY --from=BUILD /App/dist /var/www/html/
+COPY --from=BUILD /App/default.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

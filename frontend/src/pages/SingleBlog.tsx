@@ -25,8 +25,10 @@ import { Link } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import axios from "axios";
 import { marked } from "marked";
+import { BACKEND1_BASE_URL } from "../api";
 
-const COMMENTS_API = "http://localhost:3001/api/comments";
+
+const COMMENTS_API = `${BACKEND1_BASE_URL}/api/comments`;
 
 const SingleBlog: React.FC = () => {
   const { id } = useParams<{ id: string }>();

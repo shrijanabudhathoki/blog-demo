@@ -12,7 +12,8 @@ import {
 import { useAuth, useUser, SignInButton } from "@clerk/clerk-react";
 import axios from "axios";
 
-const USER_API = "http://localhost:3000/api/users";
+import { BACKEND1_BASE_URL } from "../api";
+const USER_API = `${BACKEND1_BASE_URL}/api/users`;
 
 const CompleteSignup: React.FC = () => {
   const [firstName, setFirstName] = useState("");

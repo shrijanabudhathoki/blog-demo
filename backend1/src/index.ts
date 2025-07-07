@@ -14,7 +14,12 @@ dotenv.config();
 const app: Application = express();
 
 app.use(express.json());
-app.use(cors());
+app.use(cors(
+  {
+    origin: "http://192.168.77.138",
+    credentials:true
+  }
+));
 
 app.use(loggerMiddleware);
 
