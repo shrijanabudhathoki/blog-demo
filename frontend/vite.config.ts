@@ -1,7 +1,9 @@
-// https://vite.dev/config/
-export default {
+import { defineConfig } from 'vite'
+
+export default defineConfig(({ command }) => ({
+  base: command === 'serve' ? '/' : '/blog-demo/',
   server: {
-    host: '0.0.0.0', // Bind to all interfaces
+    host: '0.0.0.0',
     port: 5173,
   },
-}
+}))
