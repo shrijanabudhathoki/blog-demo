@@ -1,59 +1,277 @@
-name: Frontend Build and Deploy
 
-on: workflow_dispatch
+name: Docker Image CI
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-  
+on:
+  push:
+    branches: [ "dev" ]
+    paths:
+      - "backend1/**"
+      - "backend2/**"
+      - "frontend/**"
+      - "!**/README.md"
+  pull_request:
+    branches: [ "dev" ]
+    paths:
+      - "backend1/**"
+      - "backend2/**"
+      - "frontend/**"
+      - "!**/README.md"
+
 jobs:
-  build:
+  detect-changes:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
-
+    outputs:
+      backend1: ${{ steps.filter.outputs.backend1 }}
+      backend2: ${{ steps.filter.outputs.backend2 }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-    - name: Checkout repository
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend1:
+              - 'backend1/**'
+              - '!backend1/README.md'
+            backend2:
+              - 'backend2/**'
+              - '!backend2/README.md'
+            frontend:
+              - 'frontend/**'
+              - '!frontend/README.md'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+
+  pull_request_checks:
+    if: github.event_name == 'pull_request'
+
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repo 
       uses: actions/checkout@v4
-      
-    - name: Setup Pages
-      id: pages
-      uses: actions/configure-pages@v5
-      
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'yarn'
-        cache-dependency-path: './frontend/yarn.lock'
-        
-    - name: Install dependencies
-      run: yarn install
 
-    - name: Build frontend
-      run: yarn build
+    - name: Check if required files exist
+      run: |
+        test -f ./frontend/package.json && echo "Frontend package.json exists"
+        test -f ./frontend/Dockerfile && echo "Frontend Dockerfile exists"
+
+    - name: Check conventional commit messages
+      uses: amannn/action-semantic-pull-request@v5
+      with:
+          githubBaseUrl: https://api.github.com
       env:
-        VITE_CLERK_PUBLISHABLE_KEY: pk_test_cGxlYXNpbmctc3R1cmdlb24tMTEuY2xlcmsuYWNjb3VudHMuZGV2JA
-        VITE_BACKEND1_BASE_URL: http://localhost:3000/
-        VITE_BACKEND2_BASE_URL: http://localhost:3000/
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: List contents of dist
-      run: ls -la dist
-      
-    - name: Upload Build to Github Pages
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: frontend/dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url  }}
+  build_and_push_backend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend1 == 'true' || needs.detect-changes.outputs.backend2 == 'true'
     runs-on: ubuntu-latest
-    needs: build
+    environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
+    outputs:
+      docker_tag: ${{ steps.vars.outputs.tag }}
+      changed_files: ${{ steps.changed.outputs.changed_files }}
+      
     steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+    - name: Checkout the repo
+      uses: actions/checkout@v4
+
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          backend1:
+              - 'backend1/**'
+              - '!backend1/README.md'
+          backend2:
+              - 'backend2/**'
+              - '!backend2/README.md'
+
+    - name: Set Changed Files Flag
+      id: changed
+      run: |
+        if [[ "${{ steps.filter.outputs.backend1 }}" == "true" || "${{ steps.filter.outputs.backend2 }}" == "true" ]]; then
+          echo "changed_files=true" >> $GITHUB_OUTPUT
+        else
+          echo "changed_files=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set Tag for Docker Image
+      id: vars
+      run : |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          VERSION=$(cat VERSION)
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+        else
+          BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+          SHORT_SHA=${GITHUB_SHA::7}
+          echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Login to DockerHub
+      if: steps.filter.outputs.backend1 == 'true' || steps.filter.outputs.backend2 == 'true'
+      uses: docker/login-action@v3
+      with:
+        username: ${{secrets.DOCKER_USERNAME}}
+        password: ${{secrets.DOCKER_TOKEN}}
+          
+    - name: Set up Docker Buildx
+      if: steps.filter.outputs.backend1 == 'true' || steps.filter.outputs.backend2 == 'true'
+      uses: docker/setup-buildx-action@v3
+          
+    - name: Build and Push Backend1 Image
+      if: steps.filter.outputs.backend1 == 'true'
+      uses: docker/build-push-action@v6
+      with:
+          context: ./backend1
+          file: ./backend1/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.vars.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=oci, dest=backend1-artifact.tar
+
+    - name: Upload Backend1 Artifacts
+      if: steps.filter.outputs.backend1 == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend1-artifact
+        path: backend1-artifact.tar
+
+    - name: Build and Push Backend2 Image
+      if: steps.filter.outputs.backend2 == 'true'
+      uses: docker/build-push-action@v6
+      with:
+          context: ./backend2
+          file: ./backend2/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.vars.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=oci, dest=backend2-artifact.tar
+
+    - name: Upload Backend2 Artifacts
+      if: steps.filter.outputs.backend2 == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend2-artifact-${{ steps.vars.outputs.tag }}
+        path: backend2-artifact.tar
+  
+  build_and_push_frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
+    outputs:
+      docker_tag: ${{ steps.vars.outputs.tag }}
+      changed_files: ${{ steps.changed.outputs.changed_files }}
+    
+    steps:
+    - name: Checkout the repo
+      uses: actions/checkout@v4
+
+    - uses: dorny/paths-filter@v3
+      id: filter
+      with:
+        filters: |
+          frontend:
+              - 'frontend/**'
+              - '!frontend/README.md'
+
+    - name: Set Changed Files Flag
+      id: changed
+      run: |
+        if [[ "${{ steps.filter.outputs.frontend }}" == "true" ]]; then
+          echo "changed_files=true" >> $GITHUB_OUTPUT
+        else
+          echo "changed_files=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set Tag for Docker Image
+      id: vars
+      run : |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          VERSION=$(cat VERSION)
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+        else
+          BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+          SHORT_SHA=${GITHUB_SHA::7}
+          echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Login to DockerHub
+      if: steps.filter.outputs.frontend == 'true'
+      uses: docker/login-action@v3
+      with:
+        username: ${{secrets.DOCKER_USERNAME}}
+        password: ${{secrets.DOCKER_TOKEN}}
+      
+    - name: Set up Docker Buildx
+      if: steps.filter.outputs.frontend == 'true'
+      uses: docker/setup-buildx-action@v3
+          
+    - name: Build and Push Frontend Image
+      if: steps.filter.outputs.frontend == 'true'
+      uses: docker/build-push-action@v6
+      with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=oci, dest=frontend-artifact.tar
+
+    - name: Upload Frontend Artifacts
+      if: steps.filter.outputs.frontend == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-artifact
+        path: frontend-artifact.tar
+
+  # deploy_frontend:
+  #   if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
+  #   runs-on: frontend
+  #   needs: build_and_push_frontend
+  #   steps:
+  #   - name: SSH and Deploy Frontend
+  #     uses: appleboy/ssh-action@v1
+  #     with:
+  #       host: ${{ secrets.SERVER_IP }}
+  #       username: ${{ secrets.SERVER_USER }}
+  #       key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+  #       port: ${{ secrets.SERVER_PORT }}
+  #       script: |
+  #         echo '${{ secrets.DOCKER_TOKEN }}' | sudo docker login -u '${{ secrets.DOCKER_USERNAME }}' --password-stdin
+  #         sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
+  #         sudo docker stop frontend || true
+  #         sudo docker rm frontend || true
+  #         sudo docker run -d --name frontend -p 80:80 ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
+
+  # deploy_backend:
+  #   if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
+  #   runs-on: backend
+  #   needs: build_and_push_backend
+  #   steps:
+  #     - name: Deploy Backend
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: 192.168.77.138
+  #         username: shrijana
+  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+  #         port: 22
+  #         script: |
+  #           echo "$DOCKER_TOKEN" | sudo docker login -u "$DOCKER_USERNAME" --password-stdin
+  #           sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+  #           sudo docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
+  #           sudo docker stop backend1 || true
+  #           sudo docker stop backend2 || true
+  #           sudo docker rm backend1 || true
+  #           sudo docker rm backend2 || true
+  #           sudo docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+  #           sudo docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
+  #       env:
+  #         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  #         DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+  #         DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
+
+  

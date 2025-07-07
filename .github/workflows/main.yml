@@ -6,17 +6,11 @@ on:
       - "dev"
       - "main"
     paths:
-      - 'backend1/**'
-      - 'backend2/**'
-      - 'frontend/**'
       - '!backend1/README.md'
       - '!backend2/README.md'
   pull_request:
     branches: [ "dev" ]
     paths:
-      - 'backend1/**'
-      - 'backend2/**'
-      - 'frontend/**'
       - '!backend1/README.md'
       - '!backend2/README.md'
 
