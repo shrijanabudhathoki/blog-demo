@@ -1,11 +1,11 @@
-FROM node:18 AS BUILD
+FROM node:18 AS build
 
 WORKDIR /App
 COPY . .
 RUN npm install
 RUN yarn build
 
-FROM nginx:1.27.5-alpine AS PROD
+FROM nginx:1.27.5-alpine AS prod
 
 COPY --from=BUILD /App/dist /var/www/html/
 COPY --from=BUILD /App/default.conf /etc/nginx/conf.d/default.conf
