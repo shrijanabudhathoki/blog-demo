@@ -30,7 +30,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   detect_changes:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       backend1: ${{ steps.filter.outputs.backend1 }}
@@ -47,13 +46,11 @@ jobs:
           filters: |
             backend1:
               - 'backend1/**'
-              - '!backend1/README.md'
             backend2:
               - 'backend2/**'
-              - '!backend2/README.md'
             frontend:
               - 'frontend/**'
-              - '!frontend/README.md'
+
   build_and_push_backend:
     needs: detect_changes
     if: needs.detect_changes.outputs.backend1 == 'true' || needs.detect_changes.outputs.backend2 == 'true'
