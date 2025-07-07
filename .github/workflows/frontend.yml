@@ -10,6 +10,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
 
     steps:
     - name: Checkout repository
@@ -24,7 +27,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'yarn'
-
+        
     - name: Install dependencies
       run: |
         cd frontend
