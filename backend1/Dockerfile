@@ -1,8 +1,14 @@
-FROM node:22-alpine AS prod
-WORKDIR /App
-COPY package*.json ./
-RUN yarn install
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json yarn.lock ./
+
+RUN yarn install --frozen-lockfile
+
 COPY . .
-RUN apk add --no-cache curl
-EXPOSE 3000
-CMD ["yarn","start"]
+
+EXPOSE 5434
+
+CMD ["yarn", "start"]
