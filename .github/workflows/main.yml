@@ -2,29 +2,32 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "dev", "main" ]
+    branches: 
+      - "dev"
+      - "main"
   pull_request:
     branches: [ "dev" ]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 
 jobs:
 
   pull_request_checks:
     if: github.event_name == 'pull_request'
+
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: test -f ./frontend/package.json && echo "Frontend package.json exists"
-      - run: test -f ./frontend/Dockerfile && echo "Frontend Dockerfile exists"
-      - uses: amannn/action-semantic-pull-request@v5
-        with:
+    - name: Checkout the repo 
+      uses: actions/checkout@v4
+
+    - name: Check if required files exist
+      run: |
+        test -f ./frontend/package.json && echo "Frontend package.json exists"
+        test -f ./frontend/Dockerfile && echo "Frontend Dockerfile exists"
+    - name: Check conventional commit messages
+      uses: amannn/action-semantic-pull-request@v5
+      with:
           githubBaseUrl: https://api.github.com
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   detect_changes:
     runs-on: ubuntu-latest
@@ -33,14 +36,20 @@ jobs:
       backend2: ${{ steps.filter.outputs.backend2 }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
-      - id: filter
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Detect changed files
+        id: filter
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            backend1: 'backend1/**'
-            backend2: 'backend2/**'
-            frontend: 'frontend/**'
+            backend1:
+              - 'backend1/**'
+            backend2:
+              - 'backend2/**'
+            frontend:
+              - 'frontend/**'
 
   build_and_push_backend:
     needs: detect_changes
@@ -50,84 +59,90 @@ jobs:
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout the repo
+        uses: actions/checkout@v4
 
-      - id: vars
+      - name: Set Tag for Docker Image
+        id: vars
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "tag=$(cat VERSION)" >> $GITHUB_OUTPUT
+            VERSION=$(cat VERSION)
+            echo "tag=$VERSION" >> $GITHUB_OUTPUT
           else
-            echo "tag=$(echo '${{ github.ref_name }}' | tr '/' '-')-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+            BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+            SHORT_SHA=${GITHUB_SHA::7}
+            echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
-
-      - uses: docker/login-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - if: needs.detect_changes.outputs.backend1 == 'true'
+      - name: Build and Push Backend1 Image
+        if: needs.detect_changes.outputs.backend1 == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./backend1
           file: ./backend1/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.vars.outputs.tag }}
-          outputs: type=oci, dest=backend1-artifact.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - if: needs.detect_changes.outputs.backend1 == 'true'
+      - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.0
         with:
           version: v0.64.1
 
-      - if: needs.detect_changes.outputs.backend1 == 'true'
+      - name: Download Trivy HTML template
         run: curl -sSL -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
 
-      - if: needs.detect_changes.outputs.backend1 == 'true'
+      - name: Run Trivy HTML Scan
         run: |
           trivy image --format template --template @html.tpl \
             -o backend1-trivy-report.html \
-            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.vars.outputs.tag }}
+            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.vars.outputs.tag }} 
 
-      - if: needs.detect_changes.outputs.backend1 == 'true'
+      - name: Upload Trivy HTML report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report-backend1
           path: backend1-trivy-report.html
 
-      - if: needs.detect_changes.outputs.backend1 == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend1-artifact
-          path: backend1-artifact.tar
-
-      - if: needs.detect_changes.outputs.backend2 == 'true'
+      - name: Build and Push Backend2 Image
+        if: needs.detect_changes.outputs.backend2 == 'true'
         uses: docker/build-push-action@v6
         with:
           context: ./backend2
           file: ./backend2/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.vars.outputs.tag }}
-          outputs: type=oci, dest=backend2-artifact.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - if: needs.detect_changes.outputs.backend2 == 'true'
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.0
+        with:
+          version: v0.64.1
+
+      - name: Download Trivy HTML template
+        run: curl -sSL -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+
+      - name: Run Trivy HTML Scan
         run: |
           trivy image --format template --template @html.tpl \
             -o backend2-trivy-report.html \
             docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.vars.outputs.tag }}
 
-      - if: needs.detect_changes.outputs.backend2 == 'true'
+      - name: Upload Trivy HTML report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report-backend2
           path: backend2-trivy-report.html
-
-      - if: needs.detect_changes.outputs.backend2 == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend2-artifact
-          path: backend2-artifact.tar
 
   build_and_push_frontend:
     needs: detect_changes
@@ -137,113 +152,183 @@ jobs:
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout the repo
+        uses: actions/checkout@v4
 
-      - id: vars
+      - name: Set Tag for Docker Image
+        id: vars
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "tag=$(cat VERSION)" >> $GITHUB_OUTPUT
+            VERSION=$(cat VERSION)
+            echo "tag=$VERSION" >> $GITHUB_OUTPUT
           else
-            echo "tag=$(echo '${{ github.ref_name }}' | tr '/' '-')-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+            BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+            SHORT_SHA=${GITHUB_SHA::7}
+            echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
-
-      - uses: docker/login-action@v3
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - uses: docker/build-push-action@v6
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
-          outputs: type=oci, dest=frontend-artifact.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - uses: aquasecurity/setup-trivy@v0.2.0
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.0
         with:
           version: v0.64.1
 
-      - run: curl -sSL -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+      - name: Download Trivy HTML template
+        run: curl -sSL -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
 
-      - run: |
+      - name: Run Trivy HTML Scan
+        run: |
           trivy image --format template --template @html.tpl \
             -o frontend-trivy-report.html \
             docker.io/${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload Trivy HTML report
+        uses: actions/upload-artifact@v4
         with:
           name: trivy-report-frontend
           path: frontend-trivy-report.html
 
-      - uses: actions/upload-artifact@v4
+  upload_trivy_reports:
+    needs: [build_and_push_backend, build_and_push_frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
         with:
-          name: frontend-artifact
-          path: frontend-artifact.tar
+          fetch-depth: 0
 
-  frontend_build_gh_pages:
-    needs: detect_changes
+      - run: mkdir -p gh-pages/trivy-report
+
+      - if: needs.detect_changes.outputs.backend1 == 'true'
+        run: |
+          mkdir -p gh-pages/trivy-report/backend1
+          cp artifacts/trivy-report-backend1/backend1-trivy-report.html gh-pages/trivy-report/backend1/index.html
+
+      - if: needs.detect_changes.outputs.backend2 == 'true'
+        run: |
+          mkdir -p gh-pages/trivy-report/backend2
+          cp artifacts/trivy-report-backend2/backend2-trivy-report.html gh-pages/trivy-report/backend2/index.html
+
+      - if: needs.detect_changes.outputs.frontend == 'true'
+        run: |
+          mkdir -p gh-pages/trivy-report/frontend
+          cp artifacts/trivy-report-frontend/frontend-trivy-report.html gh-pages/trivy-report/frontend/index.html
+
+      - name: Commit and push Trivy reports
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin reports || true
+          git switch reports || git switch --orphan reports
+          cp -r gh-pages/* .
+          git add trivy-report
+          git commit -m "chore(report): update trivy reports on ${{ github.sha }}" || echo "No changes"
+          git push origin reports
+
+
+  deploy-frontend-to-reports:
+    needs:
+      - detect-changes
+      - build_and_push_frontend
     if: needs.detect_changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
           cache: yarn
-          cache-dependency-path: ./frontend/yarn.lock
-      - run: yarn install
-      - run: yarn build
+          cache-dependency-path: frontend/yarn.lock
+      - name: Install dependencies
+        run: |
+          cd frontend
+          yarn install --frozen-lockfile
+      - name: Build frontend
         env:
-          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
-          VITE_BACKEND1_BASE_URL: http://localhost:3000/
-          VITE_BACKEND2_BASE_URL: http://localhost:3000/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: frontend/dist
+          VITE_BASE_PATH: /blog-demo/frontend/
+        run: |
+          cd frontend
+          yarn build
+      - name: Copy frontend build to gh-pages
+        run: |
+          mkdir -p gh-pages/frontend
+          cp -r frontend/dist/* gh-pages/frontend/
+      - name: Push frontend to reports branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin reports || true
+          git switch reports || git switch --orphan reports
+          rm -rf frontend
+          mkdir -p frontend
+          cp -r gh-pages/frontend/* frontend/
+          git add frontend
+          git commit -m "feat(frontend): publish frontend build on reports branch at ${{ github.sha }}" || echo "No changes"
+          git push origin reports
 
-  upload_trivy_reports:
-    needs: [build_and_push_backend, build_and_push_frontend, detect_changes]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: scan
+  # deploy_frontend:
+  #   if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
+  #   runs-on: frontend
+  #   needs: build_and_push_frontend
+  #   steps:
+  #   - name: SSH and Deploy Frontend
+  #     uses: appleboy/ssh-action@v1
+  #     with:
+  #       host: ${{ secrets.SERVER_IP }}
+  #       username: ${{ secrets.SERVER_USER }}
+  #       key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+  #       port: ${{ secrets.SERVER_PORT }}
+  #       script: |
+  #         echo '${{ secrets.DOCKER_TOKEN }}' | sudo docker login -u '${{ secrets.DOCKER_USERNAME }}' --password-stdin
+  #         sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
+  #         sudo docker stop frontend || true
+  #         sudo docker rm frontend || true
+  #         sudo docker run -d --name frontend -p 80:80 ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
 
-      - run: |
-          mkdir -p combined-site/scan
-          cp -r scan/* combined-site/scan/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: github-pages-extras
-          path: combined-site/scan
-
-  frontend_deploy:
-    needs: [frontend_build_gh_pages, upload_trivy_reports]
-    if: github.ref_name == 'main'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: github-pages
-          path: combined-site
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: github-pages-extras
-          path: combined-site
-
-      - id: deployment
-        uses: actions/deploy-pages@v4
-        with:
-          path: combined-site
+  # deploy_backend:
+  #   if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
+  #   runs-on: backend
+  #   needs: build_and_push_backend
+  #   steps:
+  #     - name: Deploy Backend
+  #       uses: appleboy/ssh-action@v1
+  #       with:
+  #         host: 192.168.77.138
+  #         username: shrijana
+  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+  #         port: 22
+  #         script: |
+  #           echo "$DOCKER_TOKEN" | sudo docker login -u "$DOCKER_USERNAME" --password-stdin
+  #           sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+  #           sudo docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
+  #           sudo docker stop backend1 || true
+  #           sudo docker stop backend2 || true
+  #           sudo docker rm backend1 || true
+  #           sudo docker rm backend2 || true
+  #           sudo docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
+  #           sudo docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
+  #       env:
+  #         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  #         DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+  #         DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
