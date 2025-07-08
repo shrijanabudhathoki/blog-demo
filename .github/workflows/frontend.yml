@@ -65,7 +65,7 @@ jobs:
         docker images  # for debug
 
     - name: Run Trivy scan with HTML output
-      uses: aquasecurity/trivy-action@v0.5.0
+      uses: aquasecurity/trivy-action@v0.11.2
       with:
         image-ref: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build.outputs.docker-tag }}
         format: 'template'
