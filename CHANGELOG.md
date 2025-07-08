@@ -1,3 +1,10 @@
+## [1.0.7](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.0.6...v1.0.7) (2025-07-08)
+
+
+### Bug Fixes
+
+* test ([9be31ce](https://github.com/shrijanabudhathoki/blog-demo/commit/9be31ce10f2902e70a0ef103809fc40b3b28acd4))
+
 ## [1.0.6](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.0.5...v1.0.6) (2025-07-08)
 
 
