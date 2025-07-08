@@ -67,7 +67,7 @@ jobs:
         run: |
           git fetch --tags
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(git describe --tags --abbrev=0)
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
           else
             BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
             SHORT_SHA=${GITHUB_SHA::7}
@@ -163,7 +163,7 @@ jobs:
         run: |
           git fetch --tags
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(git describe --tags --abbrev=0)
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
           else
             BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
             SHORT_SHA=${GITHUB_SHA::7}
