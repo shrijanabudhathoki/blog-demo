@@ -320,7 +320,7 @@ jobs:
 
   deploy_frontend:
     needs:
-      - build-and-push-frontend
+      - build_and_push_frontend
       - detect-changes
 
     runs-on: [self-hosted, frontend]
@@ -336,7 +336,7 @@ jobs:
 
   deploy_backend1:
     needs:
-      - build-and-push-backend
+      - build_and_push_backend
       - detect-changes
 
     runs-on: ubuntu-latest
@@ -352,7 +352,7 @@ jobs:
 
   deploy_backend2:
     needs:
-      - build-and-push-backend
+      - build_and_push_backend
       - detect-changes
 
     runs-on: ubuntu-latest
