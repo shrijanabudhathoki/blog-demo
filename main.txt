@@ -169,6 +169,57 @@ jobs:
           path: frontend-artifact.tar
 
 
+
+  trivy_scan:
+    if: github.ref_name == 'main'
+    needs: [build_and_push_backend, build_and_push_frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Trivy HTML template
+        run: |
+          mkdir -p contrib
+          wget -O contrib/html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+
+      - name: Run Trivy vulnerability scanner on Frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'shrijanab/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}'
+          format: 'template'
+          template: '@contrib/html.tpl'
+          output: 'frontend-scan.html'
+
+      - name: Run Trivy vulnerability scanner on Backend1 image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'shrijanab/blog-backend1:${{ needs.build_and_push_backend.outputs.docker_tag }}'
+          format: 'template'
+          template: '@contrib/html.tpl'
+          output: 'backend1-scan.html'
+
+      - name: Run Trivy vulnerability scanner on Backend2 image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'shrijanab/blog-backend2:${{ needs.build_and_push_backend.outputs.docker_tag }}'
+          format: 'template'
+          template: '@contrib/html.tpl'
+          output: 'backend2-scan.html'
+
+      - name: Move scan reports to directory
+        run: |
+          mkdir -p scan-reports
+          mv frontend-scan.html scan-reports/
+          mv backend1-scan.html scan-reports/
+          mv backend2-scan.html scan-reports/
+
+      - name: Upload scan reports artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: scan-reports/
+
+          
   # deploy_frontend:
   #   if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
   #   runs-on: frontend

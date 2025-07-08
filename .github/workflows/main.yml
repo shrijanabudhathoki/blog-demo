@@ -8,26 +8,31 @@ on:
   pull_request:
     branches: [ "dev" ]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
 
   pull_request_checks:
     if: github.event_name == 'pull_request'
-
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout the repo 
-      uses: actions/checkout@v4
+      - name: Checkout the repo 
+        uses: actions/checkout@v4
 
-    - name: Check if required files exist
-      run: |
-        test -f ./frontend/package.json && echo "Frontend package.json exists"
-        test -f ./frontend/Dockerfile && echo "Frontend Dockerfile exists"
-    - name: Check conventional commit messages
-      uses: amannn/action-semantic-pull-request@v5
-      with:
+      - name: Check if required files exist
+        run: |
+          test -f ./frontend/package.json && echo "Frontend package.json exists"
+          test -f ./frontend/Dockerfile && echo "Frontend Dockerfile exists"
+
+      - name: Check conventional commit messages
+        uses: amannn/action-semantic-pull-request@v5
+        with:
           githubBaseUrl: https://api.github.com
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   detect_changes:
     runs-on: ubuntu-latest
@@ -73,6 +78,7 @@ jobs:
             SHORT_SHA=${GITHUB_SHA::7}
             echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
+
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
@@ -94,6 +100,28 @@ jobs:
           cache-to: type=gha,mode=max
           outputs: type=oci, dest=backend1-artifact.tar
 
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.0
+        with:
+          version: v0.64.1
+
+      - name: Download Trivy HTML template
+        run: curl -sSL -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+
+      - name: Run Trivy HTML Scan (Backend1)
+        if: needs.detect_changes.outputs.backend1 == 'true'
+        run: |
+          trivy image --format template --template @html.tpl \
+            -o backend1-trivy-report.html \
+            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.vars.outputs.tag }}
+
+      - name: Upload Trivy HTML report (Backend1)
+        if: needs.detect_changes.outputs.backend1 == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-backend1
+          path: backend1-trivy-report.html
+
       - name: Upload Backend1 Artifacts
         if: needs.detect_changes.outputs.backend1 == 'true'
         uses: actions/upload-artifact@v4
@@ -112,6 +140,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           outputs: type=oci, dest=backend2-artifact.tar
+
+      - name: Run Trivy HTML Scan (Backend2)
+        if: needs.detect_changes.outputs.backend2 == 'true'
+        run: |
+          trivy image --format template --template @html.tpl \
+            -o backend2-trivy-report.html \
+            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.vars.outputs.tag }}
+
+      - name: Upload Trivy HTML report (Backend2)
+        if: needs.detect_changes.outputs.backend2 == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-backend2
+          path: backend2-trivy-report.html
 
       - name: Upload Backend2 Artifacts
         if: needs.detect_changes.outputs.backend2 == 'true'
@@ -142,6 +184,7 @@ jobs:
             SHORT_SHA=${GITHUB_SHA::7}
             echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
+
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
@@ -162,11 +205,71 @@ jobs:
           cache-to: type=gha,mode=max
           outputs: type=oci, dest=frontend-artifact.tar
 
+      - name: Set up Trivy
+        uses: aquasecurity/setup-trivy@v0.2.0
+        with:
+          version: v0.64.1
+
+      - name: Download Trivy HTML template
+        run: curl -sSL -o html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+
+      - name: Run Trivy HTML Scan
+        run: |
+          trivy image --format template --template @html.tpl \
+            -o frontend-trivy-report.html \
+            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
+
+      - name: Upload Trivy HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-frontend
+          path: frontend-trivy-report.html
+
       - name: Upload Frontend Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: frontend-artifact
           path: frontend-artifact.tar
+
+  upload_trivy_reports:
+    needs: [build_and_push_backend, build_and_push_frontend, detect_changes]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Trivy reports
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - run: mkdir -p gh-pages/trivy-report
+
+      - if: needs.detect_changes.outputs.backend1 == 'true'
+        run: |
+          mkdir -p gh-pages/trivy-report/backend1
+          cp artifacts/trivy-report-backend1/backend1-trivy-report.html gh-pages/trivy-report/backend1/index.html
+
+      - if: needs.detect_changes.outputs.backend2 == 'true'
+        run: |
+          mkdir -p gh-pages/trivy-report/backend2
+          cp artifacts/trivy-report-backend2/backend2-trivy-report.html gh-pages/trivy-report/backend2/index.html
+
+      - if: needs.detect_changes.outputs.frontend == 'true'
+        run: |
+          mkdir -p gh-pages/trivy-report/frontend
+          cp artifacts/trivy-report-frontend/frontend-trivy-report.html gh-pages/trivy-report/frontend/index.html
+
+      - name: Commit and push Trivy reports
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin reports || true
+          git switch reports || git switch --orphan reports
+          cp -r gh-pages/* .
+          git add trivy-report
+          git commit -m "chore(report): update trivy reports on ${{ github.sha }}" || echo "No changes"
+          git push origin reports
 
   frontend_build_gh_pages: 
     runs-on: ubuntu-latest
@@ -196,57 +299,8 @@ jobs:
         with:
           path: frontend/dist
 
-  trivy_scan:
-    # if: github.ref_name == 'main'
-    needs: [build_and_push_backend, build_and_push_frontend]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download Trivy HTML template
-        run: |
-          mkdir -p contrib
-          wget -O contrib/html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
-
-      - name: Run Trivy vulnerability scanner on Frontend image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'shrijanab/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}'
-          format: 'template'
-          template: '@contrib/html.tpl'
-          output: 'frontend-scan.html'
-
-      - name: Run Trivy vulnerability scanner on Backend1 image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'shrijanab/blog-backend1:${{ needs.build_and_push_backend.outputs.docker_tag }}'
-          format: 'template'
-          template: '@contrib/html.tpl'
-          output: 'backend1-scan.html'
-
-      - name: Run Trivy vulnerability scanner on Backend2 image
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: 'shrijanab/blog-backend2:${{ needs.build_and_push_backend.outputs.docker_tag }}'
-          format: 'template'
-          template: '@contrib/html.tpl'
-          output: 'backend2-scan.html'
-
-      - name: Move scan reports to directory
-        run: |
-          mkdir -p scan-reports
-          mv frontend-scan.html scan-reports/
-          mv backend1-scan.html scan-reports/
-          mv backend2-scan.html scan-reports/
-
-      - name: Upload scan reports artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: trivy-report
-          path: scan-reports/
-
   frontend_deploy:
-    needs: [frontend_build_gh_pages, trivy_scan]
+    needs: [frontend_build_gh_pages, upload_trivy_reports, detect_changes]
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' && needs.detect_changes.outputs.frontend == 'true'
     environment:
@@ -262,7 +316,7 @@ jobs:
       - name: Download Trivy scan report
         uses: actions/download-artifact@v4
         with:
-          name: trivy-report
+          name: trivy-report-frontend
           path: combined-site/scan
 
       - name: Deploy to GitHub Pages
@@ -270,49 +324,3 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           path: combined-site
-
-  # deploy_frontend:
-  #   if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
-  #   runs-on: frontend
-  #   needs: build_and_push_frontend
-  #   steps:
-  #   - name: SSH and Deploy Frontend
-  #     uses: appleboy/ssh-action@v1
-  #     with:
-  #       host: ${{ secrets.SERVER_IP }}
-  #       username: ${{ secrets.SERVER_USER }}
-  #       key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #       port: ${{ secrets.SERVER_PORT }}
-  #       script: |
-  #         echo '${{ secrets.DOCKER_TOKEN }}' | sudo docker login -u '${{ secrets.DOCKER_USERNAME }}' --password-stdin
-  #         sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
-  #         sudo docker stop frontend || true
-  #         sudo docker rm frontend || true
-  #         sudo docker run -d --name frontend -p 80:80 ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
-
-  # deploy_backend:
-  #   if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
-  #   runs-on: backend
-  #   needs: build_and_push_backend
-  #   steps:
-  #     - name: Deploy Backend
-  #       uses: appleboy/ssh-action@v1
-  #       with:
-  #         host: 192.168.77.138
-  #         username: shrijana
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         port: 22
-  #         script: |
-  #           echo "$DOCKER_TOKEN" | sudo docker login -u "$DOCKER_USERNAME" --password-stdin
-  #           sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-  #           sudo docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-  #           sudo docker stop backend1 || true
-  #           sudo docker stop backend2 || true
-  #           sudo docker rm backend1 || true
-  #           sudo docker rm backend2 || true
-  #           sudo docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-  #           sudo docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-  #       env:
-  #         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  #         DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-  #         DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
