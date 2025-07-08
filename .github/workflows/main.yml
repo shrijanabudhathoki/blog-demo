@@ -54,25 +54,28 @@ jobs:
   build_and_push_backend:
     needs: detect_changes
     if: needs.detect_changes.outputs.backend1 == 'true' || needs.detect_changes.outputs.backend2 == 'true'
-    runs-on: [self-hosted, backend]
+    runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
-      docker_tag: ${{ steps.vars.outputs.tag }}
+      docker_tag: ${{ steps.get_tag.outputs.tag }}
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
 
-      - name: Set Tag for Docker Image
-        id: vars
+      - name: Get latest tag
+        id: get_tag
         run: |
+          git fetch --tags
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(cat VERSION)
-            echo "tag=$VERSION" >> $GITHUB_OUTPUT
+            VERSION=$(git describe --tags --abbrev=0)
           else
             BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
             SHORT_SHA=${GITHUB_SHA::7}
-            echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+            VERSION="${BRANCH_NAME}-${SHORT_SHA}"
           fi
+          echo "Using tag: $VERSION"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
@@ -89,7 +92,7 @@ jobs:
           context: ./backend1
           file: ./backend1/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.vars.outputs.tag }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -105,7 +108,7 @@ jobs:
         run: |
           trivy image --format template --template @html.tpl \
             -o backend1-trivy-report.html \
-            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.vars.outputs.tag }} 
+            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} 
 
       - name: Upload Trivy HTML report
         uses: actions/upload-artifact@v4
@@ -120,7 +123,7 @@ jobs:
           context: ./backend2
           file: ./backend2/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.vars.outputs.tag }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -136,7 +139,7 @@ jobs:
         run: |
           trivy image --format template --template @html.tpl \
             -o backend2-trivy-report.html \
-            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.vars.outputs.tag }}
+            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
 
       - name: Upload Trivy HTML report
         uses: actions/upload-artifact@v4
@@ -147,25 +150,28 @@ jobs:
   build_and_push_frontend:
     needs: detect_changes
     if: needs.detect_changes.outputs.frontend == 'true'
-    runs-on: [self-hosted, frontend]
+    runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
-      docker_tag: ${{ steps.vars.outputs.tag }}
+      docker_tag: ${{ steps.get_tag.outputs.tag }}
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
 
-      - name: Set Tag for Docker Image
-        id: vars
+      - name: Get latest tag
+        id: get_tag
         run: |
+          git fetch --tags
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(cat VERSION)
-            echo "tag=$VERSION" >> $GITHUB_OUTPUT
+            VERSION=$(git describe --tags --abbrev=0)
           else
             BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
             SHORT_SHA=${GITHUB_SHA::7}
-            echo "tag=${BRANCH_NAME}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+            VERSION="${BRANCH_NAME}-${SHORT_SHA}"
           fi
+          echo "Using tag: $VERSION"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          
       - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
@@ -181,7 +187,7 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -197,7 +203,7 @@ jobs:
         run: |
           trivy image --format template --template @html.tpl \
             -o frontend-trivy-report.html \
-            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.vars.outputs.tag }}
+            docker.io/${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }}
 
       - name: Upload Trivy HTML report
         uses: actions/upload-artifact@v4
