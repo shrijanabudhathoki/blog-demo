@@ -70,7 +70,7 @@ jobs:
       
   release-backend1:
     needs: detect_changes
-    if: github.ref == 'ref/head/main' needs.detect_changes.outputs.backend1 == 'true'
+    if: github.ref == 'ref/head/main' && needs.detect_changes.outputs.backend1 == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -107,7 +107,7 @@ jobs:
 
   release-backend2:
     needs: detect_changes
-    if: github.ref == 'ref/head/main' needs.detect_changes.outputs.backend2 == 'true'
+    if: github.ref == 'ref/head/main' && needs.detect_changes.outputs.backend2 == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -144,7 +144,7 @@ jobs:
 
   release-frontend:
     needs: detect_changes
-    if: github.ref == 'ref/head/main' needs.detect_changes.outputs.frontend == 'true'
+    if: github.ref == 'ref/head/main' && needs.detect_changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
