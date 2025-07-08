@@ -323,7 +323,7 @@ jobs:
       - build_and_push_frontend
       - detect_changes
 
-    runs-on: [self-hosted, frontend]
+    runs-on: ubuntu-latest
     if: needs.detect_changes.outputs.frontend == 'true'
 
     steps:
