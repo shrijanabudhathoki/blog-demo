@@ -4,6 +4,9 @@ module.exports = {
     '@semantic-release/commit-analyzer',
     '@semantic-release/release-notes-generator',
     '@semantic-release/changelog',
-    '@semantic-release/github'
+    '@semantic-release/github',
+    ['@semantic-release/exec', {
+      prepareCmd: 'echo ${nextRelease.version} > VERSION'
+    }]
   ]
 };
