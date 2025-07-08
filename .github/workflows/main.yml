@@ -60,17 +60,14 @@ jobs:
           filters: |
             backend1:
               - 'backend1/**'
-              - '!backend1/**/*.md'
-              - '!backend1/**/README*'
+              - '!backend1/*.md'
             backend2:
               - 'backend2/**'
-              - '!backend2/**/*.md'
-              - '!backend2/**/README*'
+              - '!backend2/*.md'
             frontend:
               - 'frontend/**'
-              - '!frontend/**/*.md'
-              - '!frontend/**/README*'
-
+              - '!frontend/*.md'
+      
   release-backend1:
     needs: detect_changes
     if: github.ref == 'ref/head/main' needs.detect_changes.outputs.backend1 == 'true'
