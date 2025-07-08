@@ -1,6 +1,11 @@
 name: Docker Image CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.2.3)'
+        required: false
   push:
     branches: 
       - "dev"
@@ -62,19 +67,21 @@ jobs:
       - name: Checkout the repo
         uses: actions/checkout@v4
 
-      - name: Get latest tag
+      - name: Get tag
         id: get_tag
         run: |
-          git fetch --tags
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
-          else
-            BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
-            SHORT_SHA=${GITHUB_SHA::7}
-            VERSION="${BRANCH_NAME}-${SHORT_SHA}"
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
+            else
+              BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+              SHORT_SHA=${GITHUB_SHA::7}
+              VERSION="${BRANCH_NAME}-${SHORT_SHA}"
+            fi
           fi
           echo "Using tag: $VERSION"
-          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
           
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -92,7 +99,9 @@ jobs:
           context: ./backend1
           file: ./backend1/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/blog-backend1:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -123,7 +132,9 @@ jobs:
           context: ./backend2
           file: ./backend2/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
+          tags: | 
+            ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
+            ${{ github.ref == 'refs/heads/main' && format('{0}/blog-backend2:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -161,16 +172,18 @@ jobs:
       - name: Get latest tag
         id: get_tag
         run: |
-          git fetch --tags
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
-          else
-            BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
-            SHORT_SHA=${GITHUB_SHA::7}
-            VERSION="${BRANCH_NAME}-${SHORT_SHA}"
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
+            else
+              BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+              SHORT_SHA=${GITHUB_SHA::7}
+              VERSION="${BRANCH_NAME}-${SHORT_SHA}"
+            fi
           fi
           echo "Using tag: $VERSION"
-          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=$VERSION" >> $GITHUB_OUTPUT
           
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -187,7 +200,9 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }}
+          tags: | 
+            ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }}
+             ${{ github.ref == 'refs/heads/main' && format('{0}/blog-frontend:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -303,48 +318,51 @@ jobs:
           git commit -m "feat(frontend): publish frontend build on reports branch at ${{ github.sha }}" || echo "No changes"
           git push origin reports
 
-  # deploy_frontend:
-  #   if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
-  #   runs-on: frontend
-  #   needs: build_and_push_frontend
-  #   steps:
-  #   - name: SSH and Deploy Frontend
-  #     uses: appleboy/ssh-action@v1
-  #     with:
-  #       host: ${{ secrets.SERVER_IP }}
-  #       username: ${{ secrets.SERVER_USER }}
-  #       key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #       port: ${{ secrets.SERVER_PORT }}
-  #       script: |
-  #         echo '${{ secrets.DOCKER_TOKEN }}' | sudo docker login -u '${{ secrets.DOCKER_USERNAME }}' --password-stdin
-  #         sudo docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
-  #         sudo docker stop frontend || true
-  #         sudo docker rm frontend || true
-  #         sudo docker run -d --name frontend -p 80:80 ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}
+  deploy_frontend:
+    needs:
+      - build-and-push-frontend
+      - detect-changes
 
-  # deploy_backend:
-  #   if: github.event_name == 'push' && needs.build_and_push_backend.outputs.changed_files == 'true'
-  #   runs-on: backend
-  #   needs: build_and_push_backend
-  #   steps:
-  #     - name: Deploy Backend
-  #       uses: appleboy/ssh-action@v1
-  #       with:
-  #         host: 192.168.77.138
-  #         username: shrijana
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         port: 22
-  #         script: |
-  #           echo "$DOCKER_TOKEN" | sudo docker login -u "$DOCKER_USERNAME" --password-stdin
-  #           sudo docker pull "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-  #           sudo docker pull "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-  #           sudo docker stop backend1 || true
-  #           sudo docker stop backend2 || true
-  #           sudo docker rm backend1 || true
-  #           sudo docker rm backend2 || true
-  #           sudo docker run -d --name backend1 -p 8080:8080 "$DOCKER_USERNAME/blog-backend1:$DOCKER_TAG"
-  #           sudo docker run -d --name backend2 -p 8081:8081 "$DOCKER_USERNAME/blog-backend2:$DOCKER_TAG"
-  #       env:
-  #         DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  #         DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-  #         DOCKER_TAG: ${{ needs.build_and_push_backend.outputs.docker_tag }}
+    runs-on: [self-hosted, frontend]
+    if: needs.detect-changes.outputs.frontend == 'true'
+
+    steps:
+      - name: SSH and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose pull frontend
+            docker compose --profile frontend up -d
+
+  deploy_backend1:
+    needs:
+      - build-and-push-backend
+      - detect-changes
+
+    runs-on: ubuntu-latest
+    if: needs.detect_changes.outputs.backend1 == 'true'
+
+    steps:
+      - name: SSH and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose pull backend1
+            docker compose --profile backend1 up -d
+
+  deploy_backend2:
+    needs:
+      - build-and-push-backend
+      - detect-changes
+
+    runs-on: ubuntu-latest
+    if: needs.detect_changes.outputs.backend2 == 'true'
+
+    steps:
+      - name: SSH and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose pull backend2
+            docker compose --profile backend2 up -d
+    
