@@ -168,7 +168,108 @@ jobs:
           name: frontend-artifact
           path: frontend-artifact.tar
 
+  frontend_build_gh_pages: 
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    needs: detect_changes
+    if: needs.detect_changes.outputs.frontend == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: './frontend/yarn.lock'
+      - name: Install dependencies
+        run: yarn install
+      - name: Build frontend
+        run: yarn build
+        env:
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_BACKEND1_BASE_URL: http://localhost:3000/
+          VITE_BACKEND2_BASE_URL: http://localhost:3000/
+      - name: Upload Build to Github Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
 
+  trivy_scan:
+    if: github.ref_name == 'main'
+    needs: [build_and_push_backend, build_and_push_frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Trivy HTML template
+        run: |
+          mkdir -p contrib
+          wget -O contrib/html.tpl https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/html.tpl
+
+      - name: Run Trivy vulnerability scanner on Frontend image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'shrijanab/blog-frontend:${{ needs.build_and_push_frontend.outputs.docker_tag }}'
+          format: 'template'
+          template: '@contrib/html.tpl'
+          output: 'frontend-scan.html'
+
+      - name: Run Trivy vulnerability scanner on Backend1 image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'shrijanab/blog-backend1:${{ needs.build_and_push_backend.outputs.docker_tag }}'
+          format: 'template'
+          template: '@contrib/html.tpl'
+          output: 'backend1-scan.html'
+
+      - name: Run Trivy vulnerability scanner on Backend2 image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'shrijanab/blog-backend2:${{ needs.build_and_push_backend.outputs.docker_tag }}'
+          format: 'template'
+          template: '@contrib/html.tpl'
+          output: 'backend2-scan.html'
+
+      - name: Move scan reports to directory
+        run: |
+          mkdir -p scan-reports
+          mv frontend-scan.html scan-reports/
+          mv backend1-scan.html scan-reports/
+          mv backend2-scan.html scan-reports/
+
+      - name: Upload scan reports artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: scan-reports/
+
+  frontend_deploy:
+    needs: [frontend_build_gh_pages, trivy_scan]
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main' && needs.detect_changes.outputs.frontend == 'true'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: combined-site
+
+      - name: Download Trivy scan report
+        uses: actions/download-artifact@v4
+        with:
+          name: trivy-report
+          path: combined-site/scan
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          path: combined-site
 
   # deploy_frontend:
   #   if: github.event_name == 'push' && needs.build_and_push_frontend.outputs.changed_files == 'true'
