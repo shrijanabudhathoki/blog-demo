@@ -206,6 +206,7 @@ jobs:
           path: frontend-trivy-report.html
 
   upload_trivy_reports:
+    needs: detect_changes
     if: always()
     runs-on: ubuntu-latest
     steps:
