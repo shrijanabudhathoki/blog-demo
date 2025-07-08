@@ -38,11 +38,19 @@ jobs:
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Previous Commit
+        if: github.ref == 'refs/heads/main'
+        id: prev-commit
+        run: echo "PREV_COMMIT=$(git rev-parse HEAD^1)" >> $GITHUB_ENV
 
       - name: Detect changed files
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.ref == 'refs/heads/main' && env.PREV_COMMIT || github.event.pull_request.base.sha }}
           filters: |
             backend1:
               - 'backend1/**'
@@ -51,8 +59,122 @@ jobs:
             frontend:
               - 'frontend/**'
 
-  build_and_push_backend:
+  release-backend1:
     needs: detect_changes
+    if: github.ref == 'ref/head/main' needs.detect_changes.outputs.backend1 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend1
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      released: ${{ steps.release.outputs.new_release_published }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: yarn
+          cache-dependency-path: backend1/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run semantic-release
+        id: release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from package.json
+        id: get-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  release-backend2:
+    needs: detect_changes
+    if: github.ref == 'ref/head/main' needs.detect_changes.outputs.backend2 == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend2
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      released: ${{ steps.release.outputs.new_release_published }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: yarn
+          cache-dependency-path: backend2/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run semantic-release
+        id: release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from package.json
+        id: get-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  release-frontend:
+    needs: detect_changes
+    if: github.ref == 'ref/head/main' needs.detect_changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      released: ${{ steps.release.outputs.new_release_published }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run semantic-release
+        id: release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from package.json
+        id: get-version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  build_and_push_backend:
+    needs: 
+      - detect_changes
+      - release-backend1
+      - release-backend2
     if: needs.detect_changes.outputs.backend1 == 'true' || needs.detect_changes.outputs.backend2 == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
@@ -66,8 +188,13 @@ jobs:
         id: vars
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(cat VERSION)
-            echo "tag=$VERSION" >> $GITHUB_OUTPUT
+            if [[ "${{ needs.detect_changes.outputs.backend1 }}" == "true" && "${{ needs.release-backend1.outputs.version }}" != "" ]]; then
+              echo "tag=${{ needs.release-backend1.outputs.version }}" >> $GITHUB_OUTPUT
+            elif [[ "${{ needs.detect_changes.outputs.backend2 }}" == "true" && "${{ needs.release-backend2.outputs.version }}" != "" ]]; then
+              echo "tag=${{ needs.release-backend2.outputs.version }}" >> $GITHUB_OUTPUT
+            else
+              VERSION=$(cat VERSION)
+              echo "tag=$VERSION" >> $GITHUB_OUTPUT
           else
             BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
             SHORT_SHA=${GITHUB_SHA::7}
@@ -145,7 +272,9 @@ jobs:
           path: backend2-trivy-report.html
 
   build_and_push_frontend:
-    needs: detect_changes
+    needs: 
+      - detect_changes
+      - release-frontend
     if: needs.detect_changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
@@ -159,8 +288,12 @@ jobs:
         id: vars
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            VERSION=$(cat VERSION)
-            echo "tag=$VERSION" >> $GITHUB_OUTPUT
+            if [[ "${{ needs.release-frontend.outputs.version }}" != "" ]]; then
+              echo "tag=${{ needs.release-frontend.outputs.version }}" >> $GITHUB_OUTPUT
+            else
+              VERSION=$(cat VERSION)
+              echo "tag=$VERSION" >> $GITHUB_OUTPUT
+            fi
           else
             BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
             SHORT_SHA=${GITHUB_SHA::7}
