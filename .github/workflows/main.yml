@@ -60,10 +60,16 @@ jobs:
           filters: |
             backend1:
               - 'backend1/**'
+              - '!backend1/**/*.md'
+              - '!backend1/**/README*'
             backend2:
               - 'backend2/**'
+              - '!backend2/**/*.md'
+              - '!backend2/**/README*'
             frontend:
               - 'frontend/**'
+              - '!frontend/**/*.md'
+              - '!frontend/**/README*'
 
   release-backend1:
     needs: detect_changes
