@@ -1,12 +1,22 @@
 module.exports = {
-  branches: ['main'],
+  branches: [
+    "main",
+    {
+      name: "dev",
+      channel: "dev",
+      prerelease: "beta",
+    },
+  ],
   plugins: [
-    '@semantic-release/commit-analyzer',
-    '@semantic-release/release-notes-generator',
-    '@semantic-release/changelog',
-    '@semantic-release/github',
-    ['@semantic-release/exec', {
-      prepareCmd: 'echo ${nextRelease.version} > VERSION'
-    }]
-  ]
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    "@semantic-release/changelog",
+    [
+      "@semantic-release/git",
+      {
+        message: "chore(release): ${nextRelease.version} [skip ci]",
+      },
+    ],
+    "@semantic-release/github",
+  ],
 };
