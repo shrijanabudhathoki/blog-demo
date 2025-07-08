@@ -321,10 +321,10 @@ jobs:
   deploy_frontend:
     needs:
       - build_and_push_frontend
-      - detect-changes
+      - detect_changes
 
     runs-on: [self-hosted, frontend]
-    if: needs.detect-changes.outputs.frontend == 'true'
+    if: needs.detect_changes.outputs.frontend == 'true'
 
     steps:
       - name: SSH and deploy
@@ -337,7 +337,7 @@ jobs:
   deploy_backend1:
     needs:
       - build_and_push_backend
-      - detect-changes
+      - detect_changes
 
     runs-on: ubuntu-latest
     if: needs.detect_changes.outputs.backend1 == 'true'
@@ -353,7 +353,7 @@ jobs:
   deploy_backend2:
     needs:
       - build_and_push_backend
-      - detect-changes
+      - detect_changes
 
     runs-on: ubuntu-latest
     if: needs.detect_changes.outputs.backend2 == 'true'
