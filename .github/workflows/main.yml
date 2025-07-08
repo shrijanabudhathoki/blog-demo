@@ -54,7 +54,7 @@ jobs:
   build_and_push_backend:
     needs: detect_changes
     if: needs.detect_changes.outputs.backend1 == 'true' || needs.detect_changes.outputs.backend2 == 'true'
-    runs-on: backend
+    runs-on: [self-hosted, backend]
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
@@ -147,7 +147,7 @@ jobs:
   build_and_push_frontend:
     needs: detect_changes
     if: needs.detect_changes.outputs.frontend == 'true'
-    runs-on: frontend
+    runs-on: [self-hosted, frontend]
     environment: ${{ github.ref == 'refs/heads/main' && 'PRODUCTION' || 'DEVELOPMENT' }}
     outputs:
       docker_tag: ${{ steps.vars.outputs.tag }}
