@@ -1,17 +1,11 @@
 name: Docker Image CI
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version (e.g., v1.2.3)'
-        required: false
-  push:
-    branches: 
-      - "dev"
-      - "main"
-  pull_request:
-    branches: [ "dev" ]
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+
 
 jobs:
 
@@ -146,7 +140,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Save Backend2 Docker Image to tarball
-        if: needs.detect_changes.outputs.backend1 == 'true'
+        if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
           docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
           docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }} -o backend2-artifact.tar
