@@ -105,6 +105,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Save Backend1 Docker Image to tarball
+        if: needs.detect_changes.outputs.backend1 == 'true'
+        run: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
+          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} -o backend1-artifact.tar
+
+
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.0
         with:
@@ -137,6 +144,13 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}/blog-backend2:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Save Backend1 Docker Image to tarball
+        if: needs.detect_changes.outputs.backend1 == 'true'
+        run: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
+          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} -o backend1-artifact.tar
+
 
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.0
@@ -206,6 +220,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Save Backend1 Docker Image to tarball
+        if: needs.detect_changes.outputs.backend1 == 'true'
+        run: |
+          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
+          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} -o backend1-artifact.tar
+
+      - name: Debug tag
+        run: echo "Tag is ${{ steps.get_tag.outputs.tag }}"
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.0
         with:
