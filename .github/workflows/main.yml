@@ -145,11 +145,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Save Backend1 Docker Image to tarball
+      - name: Save Backend2 Docker Image to tarball
         if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} -o backend1-artifact.tar
+          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
+          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }} -o backend2-artifact.tar
 
 
       - name: Set up Trivy
@@ -220,11 +220,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Save Backend1 Docker Image to tarball
-        if: needs.detect_changes.outputs.backend1 == 'true'
+      - name: Save Frontend Docker Image to tarball
+        if: needs.detect_changes.outputs.frontend == 'true'
         run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} -o backend1-artifact.tar
+          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }}
+          docker save ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }} -o frontend-artifact.tar
 
       - name: Debug tag
         run: echo "Tag is ${{ steps.get_tag.outputs.tag }}"
