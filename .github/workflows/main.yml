@@ -15,6 +15,8 @@ jobs:
     steps:
     - name: Checkout the repo 
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Check if required files exist
       run: |
@@ -36,6 +38,8 @@ jobs:
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Detect changed files
         id: filter
