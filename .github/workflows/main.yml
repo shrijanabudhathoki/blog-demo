@@ -342,7 +342,7 @@ jobs:
 
   deploy_backend1:
     needs:
-      - build_and_push_backend1
+      - build_and_push_backend
       - detect_changes
 
     runs-on: backend
@@ -358,7 +358,7 @@ jobs:
 
   deploy_backend2:
     needs:
-      - build_and_push_backend2
+      - build_and_push_backend
       - detect_changes
 
     runs-on: backend
