@@ -329,58 +329,45 @@ jobs:
       - build_and_push_frontend
       - detect_changes
 
-    runs-on: ubuntu-latest
-    if: needs.detect_changes.outputs.frontend == 'true'
+    runs-on: frontend
+    if: needs.detect-changes.outputs.frontend == 'true'
 
     steps:
       - name: SSH and deploy
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-          script: |
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd /home/shrijana/prod
             docker compose pull frontend
             docker compose --profile frontend up -d
+
   deploy_backend1:
     needs:
-      - build_and_push_backend
+      - build_and_push_backend1
       - detect_changes
 
-    runs-on: ubuntu-latest
-    if: needs.detect_changes.outputs.backend1 == 'true'
+    runs-on: backend
+    if: needs.detect-changes.outputs.backend1 == 'true'
 
     steps:
       - name: SSH and deploy
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-          script: |
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd /home/shrijana/prod
             docker compose pull backend1
             docker compose --profile backend1 up -d
 
-
   deploy_backend2:
     needs:
-      - build_and_push_backend
+      - build_and_push_backend2
       - detect_changes
 
-    runs-on: ubuntu-latest
-    if: needs.detect_changes.outputs.backend2 == 'true'
+    runs-on: backend
+    if: needs.detect-changes.outputs.backend2 == 'true'
 
     steps:
       - name: SSH and deploy
-        uses: appleboy/ssh-action@v1.0.0
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-          script: |
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd /home/shrijana/prod
             docker compose pull backend2
             docker compose --profile backend2 up -d
-    
