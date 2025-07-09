@@ -108,13 +108,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Save Backend1 Docker Image to tarball
-        if: needs.detect_changes.outputs.backend1 == 'true'
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} -o backend1-artifact.tar
-
-
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.0
         with:
@@ -147,12 +140,6 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}/blog-backend2:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Save Backend2 Docker Image to tarball
-        if: needs.detect_changes.outputs.backend2 == 'true'
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }} -o backend2-artifact.tar
 
 
       - name: Set up Trivy
@@ -222,12 +209,6 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}/blog-frontend:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Save Frontend Docker Image to tarball
-        if: needs.detect_changes.outputs.frontend == 'true'
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }} -o frontend-artifact.tar
 
       - name: Debug tag
         run: echo "Tag is ${{ steps.get_tag.outputs.tag }}"
@@ -343,63 +324,63 @@ jobs:
           git commit -m "feat(frontend): publish frontend build on reports branch at ${{ github.sha }}" || echo "No changes"
           git push origin reports
 
-  # deploy_frontend:
-  #   needs:
-  #     - build_and_push_frontend
-  #     - detect_changes
+  deploy_frontend:
+    needs:
+      - build_and_push_frontend
+      - detect_changes
 
-  #   runs-on: ubuntu-latest
-  #   if: needs.detect_changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    if: needs.detect_changes.outputs.frontend == 'true'
 
-  #   steps:
-  #     - name: SSH and deploy
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.SSH_HOST }}
-  #         username: ${{ secrets.SSH_USER }}
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         script: |
-  #           cd /home/shrijana/prod
-  #           docker compose pull frontend
-  #           docker compose --profile frontend up -d
-  # deploy_backend1:
-  #   needs:
-  #     - build_and_push_backend
-  #     - detect_changes
+    steps:
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+          script: |
+            cd /home/shrijana/prod
+            docker compose pull frontend
+            docker compose --profile frontend up -d
+  deploy_backend1:
+    needs:
+      - build_and_push_backend
+      - detect_changes
 
-  #   runs-on: ubuntu-latest
-  #   if: needs.detect_changes.outputs.backend1 == 'true'
+    runs-on: ubuntu-latest
+    if: needs.detect_changes.outputs.backend1 == 'true'
 
-  #   steps:
-  #     - name: SSH and deploy
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.SSH_HOST }}
-  #         username: ${{ secrets.SSH_USER }}
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         script: |
-  #           cd /home/shrijana/prod
-  #           docker compose pull backend1
-  #           docker compose --profile backend1 up -d
+    steps:
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+          script: |
+            cd /home/shrijana/prod
+            docker compose pull backend1
+            docker compose --profile backend1 up -d
 
 
-  # deploy_backend2:
-  #   needs:
-  #     - build_and_push_backend
-  #     - detect_changes
+  deploy_backend2:
+    needs:
+      - build_and_push_backend
+      - detect_changes
 
-  #   runs-on: ubuntu-latest
-  #   if: needs.detect_changes.outputs.backend2 == 'true'
+    runs-on: ubuntu-latest
+    if: needs.detect_changes.outputs.backend2 == 'true'
 
-  #   steps:
-  #     - name: SSH and deploy
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.SSH_HOST }}
-  #         username: ${{ secrets.SSH_USER }}
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         script: |
-  #           cd /home/shrijana/prod
-  #           docker compose pull backend2
-  #           docker compose --profile backend2 up -d
+    steps:
+      - name: SSH and deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
+          script: |
+            cd /home/shrijana/prod
+            docker compose pull backend2
+            docker compose --profile backend2 up -d
     

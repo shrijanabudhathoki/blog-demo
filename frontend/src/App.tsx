@@ -5,6 +5,7 @@ import CreateBlog from "./pages/CreateBlog";
 import CompleteSignup from "./pages/CompleteSignup";
 import { ClerkProvider, SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
 import { CssBaseline, ThemeProvider, createTheme, Box, Typography, Button } from "@mui/material";
+const basename = import.meta.env.VITE_BASE_PATH || "/";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const theme = createTheme();
@@ -15,7 +16,7 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <Box sx={{ minHeight: "100vh", width: '100%', bgcolor: "#f5f5f5" }}>
-          <Router basename='/blog-demo/frontend/'>
+          <Router basename={basename}>
             <Routes>
               <Route path="/" element={<Navigate to="/blogs" replace />} />
               <Route path="/blogs" element={<AllBlogs />} />
