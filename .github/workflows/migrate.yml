@@ -1,0 +1,34 @@
+name: migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Select backend to migrate"
+        required: true
+        default: "backend1"
+        type: choice
+        options:
+          - backend1
+          - backend2
+
+jobs:
+  migrate_db:
+    runs-on: backend
+
+    steps:
+      - name: migrate backend1
+        if: ${{ github.event.inputs.target == 'backend1' }}
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose exec backend1 yarn migrate
+
+      - name: migrate backend2
+        if: ${{ github.event.inputs.target == 'backend2' }}
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose exec backend2 yarn migrate
+
+ 
