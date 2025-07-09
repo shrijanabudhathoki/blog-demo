@@ -27,10 +27,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
-      - name: Trigger Docker Build with Version
-        uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: main.yml
-          inputs: |
-            version: ${GITHUB_REF#refs/tags/}
-          token: ${{ secrets.GITHUB_TOKEN }}

@@ -6,7 +6,6 @@ on:
     types:
       - completed
 
-
 jobs:
 
   pull_request_checks:
