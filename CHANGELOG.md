@@ -1,3 +1,10 @@
+## [1.13.1](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.13.0...v1.13.1) (2025-07-12)
+
+
+### Bug Fixes
+
+* gitignore update ([152b623](https://github.com/shrijanabudhathoki/blog-demo/commit/152b62310df3ca5ef6fec006d39b68b51dc0f6b8))
+
 # [1.13.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.12.0...v1.13.0) (2025-07-11)
 
 
