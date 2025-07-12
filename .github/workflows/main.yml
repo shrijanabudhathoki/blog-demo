@@ -28,6 +28,7 @@ jobs:
       run: |
         test -f ./frontend/package.json && echo "Frontend package.json exists"
         test -f ./frontend/Dockerfile && echo "Frontend Dockerfile exists"
+        
     - name: Check conventional commit messages
       uses: amannn/action-semantic-pull-request@v5
       with:
