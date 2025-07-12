@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite'
 
+const base = process.env.VITE_BASE_PATH || '/';
 export default defineConfig(({ command }) => ({
-  base: command === 'serve' ? '/' : '/blog-demo/frontend/',
+  base,
   server: {
     host: '0.0.0.0',
     port: 5173,

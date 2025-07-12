@@ -1,10 +1,18 @@
 name: Docker Image CI
 
 on:
-  workflow_run:
-    workflows: ["Release"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - "v*.*.*"
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - dev
+
 
 jobs:
 
@@ -15,11 +23,14 @@ jobs:
     steps:
     - name: Checkout the repo 
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Check if required files exist
       run: |
         test -f ./frontend/package.json && echo "Frontend package.json exists"
         test -f ./frontend/Dockerfile && echo "Frontend Dockerfile exists"
+
     - name: Check conventional commit messages
       uses: amannn/action-semantic-pull-request@v5
       with:
@@ -36,6 +47,8 @@ jobs:
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Detect changed files
         id: filter
@@ -63,18 +76,15 @@ jobs:
       - name: Get tag
         id: get_tag
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if [ -z "$VERSION" ]; then
             if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-              VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
+              VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "$GITHUB_SHA" | cut -c1-7)
             else
               BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
-              SHORT_SHA=${GITHUB_SHA::7}
+              SHORT_SHA=$(echo "$GITHUB_SHA" | cut -c1-7)
               VERSION="${BRANCH_NAME}-${SHORT_SHA}"
             fi
-          fi
-          echo "Using tag: $VERSION"
-          echo "tag=$VERSION" >> $GITHUB_OUTPUT
+            echo "Using tag: $VERSION"
+            echo "tag=$VERSION" >> $GITHUB_OUTPUT
           
       - name: Login to DockerHub
         uses: docker/login-action@v3
@@ -97,13 +107,6 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}/blog-backend1:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Save Backend1 Docker Image to tarball
-        if: needs.detect_changes.outputs.backend1 == 'true'
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend1:${{ steps.get_tag.outputs.tag }} -o backend1-artifact.tar
-
 
       - name: Set up Trivy
         uses: aquasecurity/setup-trivy@v0.2.0
@@ -137,12 +140,6 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}/blog-backend2:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Save Backend2 Docker Image to tarball
-        if: needs.detect_changes.outputs.backend2 == 'true'
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-backend2:${{ steps.get_tag.outputs.tag }} -o backend2-artifact.tar
 
 
       - name: Set up Trivy
@@ -179,15 +176,12 @@ jobs:
       - name: Get latest tag
         id: get_tag
         run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if [ -z "$VERSION" ]; then
-            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-              VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo $GITHUB_SHA)
-            else
-              BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
-              SHORT_SHA=${GITHUB_SHA::7}
-              VERSION="${BRANCH_NAME}-${SHORT_SHA}"
-            fi
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "$GITHUB_SHA" | cut -c1-7)
+          else
+            BRANCH_NAME=$(echo "${{ github.ref }}" | sed 's|refs/heads/||' | tr '/' '-')
+            SHORT_SHA=$(echo "$GITHUB_SHA" | cut -c1-7)
+            VERSION="${BRANCH_NAME}-${SHORT_SHA}"
           fi
           echo "Using tag: $VERSION"
           echo "tag=$VERSION" >> $GITHUB_OUTPUT
@@ -212,12 +206,6 @@ jobs:
             ${{ github.ref == 'refs/heads/main' && format('{0}/blog-frontend:latest', secrets.DOCKER_USERNAME) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Save Frontend Docker Image to tarball
-        if: needs.detect_changes.outputs.frontend == 'true'
-        run: |
-          docker pull ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }}
-          docker save ${{ secrets.DOCKER_USERNAME }}/blog-frontend:${{ steps.get_tag.outputs.tag }} -o frontend-artifact.tar
 
       - name: Debug tag
         run: echo "Tag is ${{ steps.get_tag.outputs.tag }}"
@@ -333,63 +321,76 @@ jobs:
           git commit -m "feat(frontend): publish frontend build on reports branch at ${{ github.sha }}" || echo "No changes"
           git push origin reports
 
-  # deploy_frontend:
-  #   needs:
-  #     - build_and_push_frontend
-  #     - detect_changes
+  deploy_frontend:
+    needs:
+      - build_and_push_frontend
+      - detect_changes
 
-  #   runs-on: ubuntu-latest
-  #   if: needs.detect_changes.outputs.frontend == 'true'
+    runs-on: frontend
+    if: needs.detect_changes.outputs.frontend == 'true'
 
-  #   steps:
-  #     - name: SSH and deploy
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.SSH_HOST }}
-  #         username: ${{ secrets.SSH_USER }}
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         script: |
-  #           cd /home/shrijana/prod
-  #           docker compose pull frontend
-  #           docker compose --profile frontend up -d
-  # deploy_backend1:
-  #   needs:
-  #     - build_and_push_backend
-  #     - detect_changes
+    steps:
+      - name: SSH and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose pull frontend
+            docker compose --profile frontend up -d
 
-  #   runs-on: ubuntu-latest
-  #   if: needs.detect_changes.outputs.backend1 == 'true'
+  deploy_backend1:
+    needs:
+      - build_and_push_backend
+      - detect_changes
 
-  #   steps:
-  #     - name: SSH and deploy
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.SSH_HOST }}
-  #         username: ${{ secrets.SSH_USER }}
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         script: |
-  #           cd /home/shrijana/prod
-  #           docker compose pull backend1
-  #           docker compose --profile backend1 up -d
+    runs-on: backend
+    if: needs.detect_changes.outputs.backend1 == 'true'
 
+    steps:
+      - name: SSH and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose pull backend1
+            docker compose --profile backend1 up -d
 
-  # deploy_backend2:
-  #   needs:
-  #     - build_and_push_backend
-  #     - detect_changes
+  deploy_backend2:
+    needs:
+      - build_and_push_backend
+      - detect_changes
 
-  #   runs-on: ubuntu-latest
-  #   if: needs.detect_changes.outputs.backend2 == 'true'
+    runs-on: backend
+    if: needs.detect_changes.outputs.backend2 == 'true'
 
-  #   steps:
-  #     - name: SSH and deploy
-  #       uses: appleboy/ssh-action@v1.0.0
-  #       with:
-  #         host: ${{ secrets.SSH_HOST }}
-  #         username: ${{ secrets.SSH_USER }}
-  #         key: ${{ secrets.SERVER_PRIVATE_SSH_KEY }}
-  #         script: |
-  #           cd /home/shrijana/prod
-  #           docker compose pull backend2
-  #           docker compose --profile backend2 up -d
-    
+    steps:
+      - name: SSH and deploy
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd /home/shrijana/prod
+            docker compose pull backend2
+            docker compose --profile backend2 up -d
+
+  release:
+    needs:
+      - build_and_push_frontend
+      - build_and_push_backend
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

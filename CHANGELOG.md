@@ -1,3 +1,73 @@
+## [1.13.1](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.13.0...v1.13.1) (2025-07-12)
+
+
+### Bug Fixes
+
+* gitignore update ([152b623](https://github.com/shrijanabudhathoki/blog-demo/commit/152b62310df3ca5ef6fec006d39b68b51dc0f6b8))
+
+# [1.13.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.12.0...v1.13.0) (2025-07-11)
+
+
+### Features
+
+* test Readme ([cb2b410](https://github.com/shrijanabudhathoki/blog-demo/commit/cb2b4100f6484f333c06938945e73e43450e9199))
+
+# [1.12.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.11.0...v1.12.0) (2025-07-11)
+
+
+### Features
+
+* test ([e3d63b7](https://github.com/shrijanabudhathoki/blog-demo/commit/e3d63b7977295c3197a1defba1f24d69644e28a4))
+
+# [1.11.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.10.0...v1.11.0) (2025-07-09)
+
+
+### Features
+
+* test ([fb5c868](https://github.com/shrijanabudhathoki/blog-demo/commit/fb5c8685b71d8f1495aefc67bb368104cb4b82ac))
+
+# [1.10.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.9.0...v1.10.0) (2025-07-09)
+
+
+### Features
+
+* test ([a609aa9](https://github.com/shrijanabudhathoki/blog-demo/commit/a609aa92a9962cd60a26ad31f4ea8a1b1cdb348c))
+
+# [1.9.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.8.0...v1.9.0) (2025-07-09)
+
+
+### Features
+
+* test ([95f5404](https://github.com/shrijanabudhathoki/blog-demo/commit/95f54043c1c666d103ecb48e876943477fcb70fa))
+
+# [1.8.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.7.0...v1.8.0) (2025-07-09)
+
+
+### Features
+
+* test ([69ba92c](https://github.com/shrijanabudhathoki/blog-demo/commit/69ba92cea5cf4b5f91981b6d7b20eb36abe03893))
+
+# [1.7.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.6.0...v1.7.0) (2025-07-09)
+
+
+### Features
+
+* test ([2f81bcd](https://github.com/shrijanabudhathoki/blog-demo/commit/2f81bcd72d5678e40233cf9efa55b92091ab247b))
+
+# [1.6.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.5.0...v1.6.0) (2025-07-09)
+
+
+### Features
+
+* test ([1bfe44a](https://github.com/shrijanabudhathoki/blog-demo/commit/1bfe44add9d24072fbee91620f2f9b59df6944b5))
+
+# [1.5.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.4.0...v1.5.0) (2025-07-09)
+
+
+### Features
+
+* test ([175875e](https://github.com/shrijanabudhathoki/blog-demo/commit/175875e9d11e62153f16286dc8e383a00b5f6225))
+
 # [1.4.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.3.0...v1.4.0) (2025-07-09)
 
 
