@@ -76,41 +76,47 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Semgrep and semgrep-html
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Set up Node.js (for semgrep-html)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install semgrep-html
+        run: npm install -g @returntocorp/semgrep-html
+
+      - name: Create scan output directories
         run: |
-          pip install semgrep
-          pip install git+https://github.com/returntocorp/semgrep-html.git
-          
-          
-          
-
-
-      - name: Create scan output directory
-        run: mkdir -p semgrep-reports
+          mkdir -p semgrep-reports/backend1
+          mkdir -p semgrep-reports/backend2
+          mkdir -p semgrep-reports/frontend
 
       - name: Run Semgrep on Backend1
         if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend1/report.json ./backend1
-          semgrep-html semgrep-reports/backend1/report.json > semgrep-reports/backend1/index.html
+          semgrep-html -i semgrep-reports/backend1/report.json -o semgrep-reports/backend1/index.html
 
       - name: Run Semgrep on Backend2
         if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
-          semgrep-html semgrep-reports/backend2/report.json > semgrep-reports/backend2/index.html
+          semgrep-html -i semgrep-reports/backend2/report.json -o semgrep-reports/backend2/index.html
 
       - name: Run Semgrep on Frontend
         if: needs.detect_changes.outputs.frontend == 'true'
         run: |
-          semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
-          semgrep-html semgrep-reports/backend2/report.json > semgrep-reports/backend2/index.html
+          semgrep --config auto --json --output semgrep-reports/frontend/report.json ./frontend
+          semgrep-html -i semgrep-reports/frontend/report.json -o semgrep-reports/frontend/index.html
 
       - name: Upload Semgrep reports
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-reports
           path: semgrep-reports
+
 
   upload_semgrep_reports:
     needs: semgrep_scan
