@@ -86,17 +86,17 @@ jobs:
       - name: Run Semgrep on Backend1
         if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
-          semgrep scan --config auto ./backend1 --output semgrep-reports/backend1.sarif --sarif
+          semgrep --config auto ./backend1 --output semgrep-reports/backend1/index.html --format html
 
       - name: Run Semgrep on Backend2
         if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
-          semgrep scan --config auto ./backend1 --output semgrep-reports/backend2.sarif --sarif
+          semgrep --config auto ./backend2 --output semgrep-reports/backend2/index.html --format html
 
       - name: Run Semgrep on Frontend
         if: needs.detect_changes.outputs.frontend == 'true'
         run: |
-          semgrep scan --config auto ./frontend --output semgrep-reports/frontend.sarif --sarif
+          semgrep --config auto ./frontend --output semgrep-reports/frontend/index.html --format html
 
       - name: Upload Semgrep reports
         uses: actions/upload-artifact@v4
@@ -124,17 +124,17 @@ jobs:
       - name: Copy semgrep reports
         run: |
           mkdir -p gh-pages/scan
-          if [ -f artifacts/backend1.html ]; then
+          if [ -f artifacts/backend1/index.html ]; then
             mkdir -p gh-pages/scan/backend1
-            cp artifacts/backend1.html gh-pages/scan/backend1/index.html
+            cp artifacts/backend1/index.html gh-pages/scan/backend1/index.html
           fi
-          if [ -f artifacts/backend2.html ]; then
+          if [ -f artifacts/backend2/index.html ]; then
             mkdir -p gh-pages/scan/backend2
-            cp artifacts/backend2.html gh-pages/scan/backend2/index.html
+            cp artifacts/backend2/index.html gh-pages/scan/backend2/index.html
           fi
-          if [ -f artifacts/frontend.html ]; then
+          if [ -f artifacts/frontend/index.html ]; then
             mkdir -p gh-pages/scan/frontend
-            cp artifacts/frontend.html gh-pages/scan/frontend/index.html
+            cp artifacts/frontend/index.html gh-pages/scan/frontend/index.html
           fi
       - name: Commit and push Semgrep reports
         run: |
