@@ -76,9 +76,11 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Semgrep
+      - name: Install Semgrep and semgrep-html
         run: |
           pip install semgrep
+          pip install semgrep-html
+
 
       - name: Create scan output directory
         run: mkdir -p semgrep-reports
