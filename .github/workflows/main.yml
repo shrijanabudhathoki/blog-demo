@@ -368,32 +368,3 @@ jobs:
             cd /home/shrijana/prod
             docker compose pull backend2
             docker compose --profile backend2 up -d
-
-  release:
-    needs:
-      - build_and_push_frontend
-      - build_and_push_backend
-    if: |
-      (needs.build_and_push_frontend.result == 'success' || needs.build_and_push_backend.result == 'success') &&
-      (needs.build_and_push_frontend.result != 'failure' && needs.build_and_push_backend.result != 'failure') &&
-      github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Semantic Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
