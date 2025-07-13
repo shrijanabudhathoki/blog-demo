@@ -1,3 +1,25 @@
+# [1.14.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.13.1...v1.14.0) (2025-07-13)
+
+
+### Bug Fixes
+
+* updated main.yml ([6bb8bb7](https://github.com/shrijanabudhathoki/blog-demo/commit/6bb8bb7e7842383b2e387c1511df099e741dd3f7))
+* updated main.yml ([6bdafd9](https://github.com/shrijanabudhathoki/blog-demo/commit/6bdafd907a7dc6526a0a752241026e75a9889eda))
+* updated main.yml ([94ba64b](https://github.com/shrijanabudhathoki/blog-demo/commit/94ba64badee307a9c3d171d531894294695109ca))
+* updated main.yml ([0af366d](https://github.com/shrijanabudhathoki/blog-demo/commit/0af366d13664181280969e0970bb32115c6de559))
+* updated main.yml ([0f5caeb](https://github.com/shrijanabudhathoki/blog-demo/commit/0f5caeb6dd214ccaa00cce6567c818345647b761))
+* updated main.yml ([d146193](https://github.com/shrijanabudhathoki/blog-demo/commit/d1461931fe337afe59ec0ed9fe399ae5111f36f7))
+* updated main.yml ([75444a8](https://github.com/shrijanabudhathoki/blog-demo/commit/75444a8f89bdc757c6a97fd9dbe48c2cd8dd1273))
+* updated main.yml ([3e12ef3](https://github.com/shrijanabudhathoki/blog-demo/commit/3e12ef34019b39e29cd0d17e2fff1134db0d3e5f))
+* updated main.yml ([e684ff2](https://github.com/shrijanabudhathoki/blog-demo/commit/e684ff27aff0f99a199b47125f25e47e045902a3))
+* updated main.yml ([cd4b78a](https://github.com/shrijanabudhathoki/blog-demo/commit/cd4b78af4e0fcddf0ab625c59b65990bac958838))
+
+
+### Features
+
+* test ([a4bb76e](https://github.com/shrijanabudhathoki/blog-demo/commit/a4bb76ee918aebdea4d4639745fbee54c74da328))
+* test feature ([99eb891](https://github.com/shrijanabudhathoki/blog-demo/commit/99eb891ec20e6570abc26ded03a8319f4af3031a))
+
 ## [1.13.1](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.13.0...v1.13.1) (2025-07-12)
 
 
