@@ -79,7 +79,10 @@ jobs:
       - name: Install Semgrep and semgrep-html
         run: |
           pip install semgrep
-          pip install semgrep-html
+          pip install git+https://github.com/returntocorp/semgrep-html.git
+          
+          
+          
 
 
       - name: Create scan output directory
