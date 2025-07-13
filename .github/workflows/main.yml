@@ -86,15 +86,21 @@ jobs:
       - name: Run Semgrep on Backend1
         if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
-          semgrep scan --config auto ./backend1 --output semgrep-reports/backend1.sarif --sarif
+          semgrep --config auto --json --output semgrep-reports/backend1/report.json ./backend1
+          semgrep-html semgrep-reports/backend1/report.json > semgrep-reports/backend1/index.html
+
       - name: Run Semgrep on Backend2
         if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
-          semgrep scan --config auto ./backend2 --output semgrep-reports/backend2.sarif --sarif
+          semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
+          semgrep-html semgrep-reports/backend2/report.json > semgrep-reports/backend2/index.html
+
       - name: Run Semgrep on Frontend
         if: needs.detect_changes.outputs.frontend == 'true'
         run: |
-          semgrep scan --config auto ./frontend --output semgrep-reports/frontend.sarif --sarif
+          semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
+          semgrep-html semgrep-reports/backend2/report.json > semgrep-reports/backend2/index.html
+
       - name: Upload Semgrep reports
         uses: actions/upload-artifact@v4
         with:
