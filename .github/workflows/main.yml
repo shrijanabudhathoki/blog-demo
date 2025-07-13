@@ -63,6 +63,7 @@ jobs:
               - 'frontend/**'
 
   semgrep_scan:
+    needs: detect_changes
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo
@@ -92,7 +93,7 @@ jobs:
         run: |
           semgrep --config auto ./backend2 --output semgrep-reports/backend2.html --format html 
 
-      - name: Run Semgrep on Backend1
+      - name: Run Semgrep on Frontend
         if: needs.detect_changes.outputs.frontend == 'true'
         run: |
           semgrep --config auto ./frontend --output semgrep-reports/frontend.html --format html 
