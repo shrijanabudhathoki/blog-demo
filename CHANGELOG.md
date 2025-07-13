@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.23.0...v1.24.0) (2025-07-13)
+
+
+### Features
+
+* test semgrep ([c8af80a](https://github.com/shrijanabudhathoki/blog-demo/commit/c8af80ae660d9e3ef68ed991559c6336ecfa4580))
+
 # [1.23.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.22.0...v1.23.0) (2025-07-13)
 
 
