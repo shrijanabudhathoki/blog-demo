@@ -84,9 +84,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install semgrep-html
-        run: npm install -g @returntocorp/semgrep-html
-
       - name: Create scan output directories
         run: |
           mkdir -p semgrep-reports/backend1
@@ -97,26 +94,25 @@ jobs:
         if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend1/report.json ./backend1
-          semgrep-html -i semgrep-reports/backend1/report.json -o semgrep-reports/backend1/index.html
+          npx github:returntocorp/semgrep-html -i semgrep-reports/backend1/report.json -o semgrep-reports/backend1/index.html
 
       - name: Run Semgrep on Backend2
         if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
-          semgrep-html -i semgrep-reports/backend2/report.json -o semgrep-reports/backend2/index.html
+          npx github:returntocorp/semgrep-html -i semgrep-reports/backend2/report.json -o semgrep-reports/backend2/index.html
 
       - name: Run Semgrep on Frontend
         if: needs.detect_changes.outputs.frontend == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/frontend/report.json ./frontend
-          semgrep-html -i semgrep-reports/frontend/report.json -o semgrep-reports/frontend/index.html
+          npx github:returntocorp/semgrep-html -i semgrep-reports/frontend/report.json -o semgrep-reports/frontend/index.html
 
       - name: Upload Semgrep reports
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-reports
           path: semgrep-reports
-
 
   upload_semgrep_reports:
     needs: semgrep_scan
