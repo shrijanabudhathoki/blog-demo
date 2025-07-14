@@ -79,10 +79,16 @@ jobs:
       - name: Install Semgrep
         run: pip install semgrep
 
-      - name: Set up Node.js (for semgrep-html)
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+
+      - name: Clone semgrep-html
+        run: |
+          git clone https://github.com/returntocorp/semgrep-html.git
+          cd semgrep-html
+          npm install
 
       - name: Create scan output directories
         run: |
@@ -94,25 +100,26 @@ jobs:
         if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend1/report.json ./backend1
-          npx github:returntocorp/semgrep-html -i semgrep-reports/backend1/report.json -o semgrep-reports/backend1/index.html
+          node semgrep-html/index.js -i semgrep-reports/backend1/report.json -o semgrep-reports/backend1/index.html
 
       - name: Run Semgrep on Backend2
         if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
-          npx github:returntocorp/semgrep-html -i semgrep-reports/backend2/report.json -o semgrep-reports/backend2/index.html
+          node semgrep-html/index.js -i semgrep-reports/backend2/report.json -o semgrep-reports/backend2/index.html
 
       - name: Run Semgrep on Frontend
         if: needs.detect_changes.outputs.frontend == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/frontend/report.json ./frontend
-          npx github:returntocorp/semgrep-html -i semgrep-reports/frontend/report.json -o semgrep-reports/frontend/index.html
+          node semgrep-html/index.js -i semgrep-reports/frontend/report.json -o semgrep-reports/frontend/index.html
 
       - name: Upload Semgrep reports
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-reports
           path: semgrep-reports
+
 
   upload_semgrep_reports:
     needs: semgrep_scan
@@ -421,7 +428,7 @@ jobs:
       - build_and_push_frontend
       - detect_changes
 
-    runs-on: ubuntu-latest
+    runs-on: frontend
     if: needs.detect_changes.outputs.frontend == 'true'
 
     steps:
@@ -437,7 +444,7 @@ jobs:
       - build_and_push_backend
       - detect_changes
 
-    runs-on: ubuntu-latest
+    runs-on: backend
     if: needs.detect_changes.outputs.backend1 == 'true'
 
     steps:
@@ -453,7 +460,7 @@ jobs:
       - build_and_push_backend
       - detect_changes
 
-    runs-on: ubuntu-latest
+    runs-on: backend
     if: needs.detect_changes.outputs.backend2 == 'true'
 
     steps:
