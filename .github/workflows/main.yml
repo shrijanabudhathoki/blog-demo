@@ -65,6 +65,7 @@ jobs:
   semgrep_scan:
     needs: detect_changes
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4
@@ -85,13 +86,11 @@ jobs:
           node-version: '18'
 
       - name: Clone semgrep-html
-        run: |
-          git clone https://github.com/returntocorp/semgrep-html.git semgrep-html-tool
+        run: git clone https://github.com/returntocorp/semgrep-html.git semgrep-html-tool
 
       - name: Install semgrep-html dependencies
         working-directory: semgrep-html-tool
         run: npm install
-
 
       - name: Create scan output directories
         run: |
@@ -103,19 +102,25 @@ jobs:
         if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend1/report.json ./backend1
-          node semgrep-html-tool/index.js -i semgrep-reports/backend1/report.json -o semgrep-reports/backend1/index.html
+          node --loader ts-node/esm semgrep-html-tool/cli.mjs \
+            -i semgrep-reports/backend1/report.json \
+            -o semgrep-reports/backend1/index.html
 
       - name: Run Semgrep on Backend2
         if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
-          node semgrep-html-tool/index.js -i semgrep-reports/backend2/report.json -o semgrep-reports/backend2/index.html
+          node --loader ts-node/esm semgrep-html-tool/cli.mjs \
+            -i semgrep-reports/backend2/report.json \
+            -o semgrep-reports/backend2/index.html
 
       - name: Run Semgrep on Frontend
         if: needs.detect_changes.outputs.frontend == 'true'
         run: |
           semgrep --config auto --json --output semgrep-reports/frontend/report.json ./frontend
-          node semgrep-html-tool/index.js -i semgrep-reports/frontend/report.json -o semgrep-reports/frontend/index.html
+          node --loader ts-node/esm semgrep-html-tool/cli.mjs \
+            -i semgrep-reports/frontend/report.json \
+            -o semgrep-reports/frontend/index.html
 
       - name: Upload Semgrep reports
         uses: actions/upload-artifact@v4
