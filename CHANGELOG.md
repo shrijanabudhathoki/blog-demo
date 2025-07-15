@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.34.0...v1.35.0) (2025-07-15)
+
+
+### Features
+
+* semgrep int ([5371cec](https://github.com/shrijanabudhathoki/blog-demo/commit/5371cec6ff09050b025aa81ee640d12df7d56b27))
+
 # [1.34.0](https://github.com/shrijanabudhathoki/blog-demo/compare/v1.33.0...v1.34.0) (2025-07-15)
 
 
