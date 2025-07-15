@@ -348,7 +348,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - run: mkdir -p gh-pages/scan
+      - run: mkdir -p gh-pages/semgrep-report
 
       - uses: actions/download-artifact@v4
         with:
@@ -357,18 +357,18 @@ jobs:
 
       - if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
-          mkdir -p gh-pages/scan/backend1
-          cp artifacts/backend1.html gh-pages/scan/backend1/index.html
+          mkdir -p gh-pages/semgrep-report/backend1
+          cp artifacts/backend1.html gh-pages/semgrep-report/backend1/index.html
 
       - if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
           mkdir -p gh-pages/scan/backend2
-          cp artifacts/backend2.html gh-pages/scan/backend2/index.html
+          cp artifacts/backend2.html gh-pages/semgrep-report/backend2/index.html
 
       - if: needs.detect_changes.outputs.frontend == 'true'
         run: |
           mkdir -p gh-pages/scan/frontend
-          cp artifacts/frontend.html gh-pages/scan/frontend/index.html
+          cp artifacts/frontend.html gh-pages/semgrep-report/frontend/index.html
 
       - name: Commit and push Semgrep reports
         run: |
