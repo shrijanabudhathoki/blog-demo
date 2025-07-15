@@ -79,9 +79,9 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Semgrep and HTML converter
+      - name: Install Semgrep & Formatter
         run: |
-          pip install semgrep semgrep-formatter
+          pip install semgrep semgrep-format-better
 
       - name: Run Semgrep on changed folders
         run: |
@@ -89,17 +89,17 @@ jobs:
 
           if [[ "${{ needs.detect_changes.outputs.backend1 }}" == "true" ]]; then
             semgrep scan --config auto ./backend1 --json > semgrep-reports/backend1.json
-            semgrep-formatter --input semgrep-reports/backend1.json --output semgrep-reports/backend1.html
+            semgrep-format-better --input semgrep-reports/backend1.json --output semgrep-reports/backend1.html
           fi
 
           if [[ "${{ needs.detect_changes.outputs.backend2 }}" == "true" ]]; then
             semgrep scan --config auto ./backend2 --json > semgrep-reports/backend2.json
-            semgrep-formatter --input semgrep-reports/backend2.json --output semgrep-reports/backend2.html
+            semgrep-format-better --input semgrep-reports/backend2.json --output semgrep-reports/backend2.html
           fi
 
           if [[ "${{ needs.detect_changes.outputs.frontend }}" == "true" ]]; then
             semgrep scan --config auto ./frontend --json > semgrep-reports/frontend.json
-            semgrep-formatter --input semgrep-reports/frontend.json --output semgrep-reports/frontend.html
+            semgrep-format-better --input semgrep-reports/frontend.json --output semgrep-reports/frontend.html
           fi
 
       - name: Upload Semgrep reports
