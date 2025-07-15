@@ -79,39 +79,28 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Semgrep and jq
+      - name: Install Semgrep and json2html
         run: |
-          pip install semgrep
+          pip install semgrep json2html
           sudo apt-get update && sudo apt-get install -y jq
-      
-      - name: Download Semgrep HTML template
-        run: |
-          curl -sSL -o html.tpl https://raw.githubusercontent.com/returntocorp/semgrep/develop/semgrep/scripts/html-report-template.html
 
-
-      - name: Run Semgrep scan and generate HTML report
+      - name: Run Semgrep scan and convert JSON to HTML report
         run: |
           mkdir -p semgrep-reports
 
           if [[ "${{ needs.detect_changes.outputs.backend1 }}" == "true" ]]; then
             semgrep --config auto --json ./backend1 > semgrep-reports/backend1.json
-            jq -Rs '{results: fromjson}' < semgrep-reports/backend1.json > semgrep-reports/backend1_data.json
-            cat html.tpl | sed "/__REPORT_JSON__/r semgrep-reports/backend1_data.json" | \
-              sed "/__REPORT_JSON__/d" > semgrep-reports/backend1.html
+            python3 -c "import json; from json2html import json2html; print(json2html.convert(json=json.load(open('semgrep-reports/backend1.json'))))" > semgrep-reports/backend1.html
           fi
 
           if [[ "${{ needs.detect_changes.outputs.backend2 }}" == "true" ]]; then
             semgrep --config auto --json ./backend2 > semgrep-reports/backend2.json
-            jq -Rs '{results: fromjson}' < semgrep-reports/backend2.json > semgrep-reports/backend2_data.json
-            cat html.tpl | sed "/__REPORT_JSON__/r semgrep-reports/backend2_data.json" | \
-              sed "/__REPORT_JSON__/d" > semgrep-reports/backend2.html
+            python3 -c "import json; from json2html import json2html; print(json2html.convert(json=json.load(open('semgrep-reports/backend2.json'))))" > semgrep-reports/backend2.html
           fi
 
           if [[ "${{ needs.detect_changes.outputs.frontend }}" == "true" ]]; then
             semgrep --config auto --json ./frontend > semgrep-reports/frontend.json
-            jq -Rs '{results: fromjson}' < semgrep-reports/frontend.json > semgrep-reports/frontend_data.json
-            cat html.tpl | sed "/__REPORT_JSON__/r semgrep-reports/frontend_data.json" | \
-              sed "/__REPORT_JSON__/d" > semgrep-reports/frontend.html
+            python3 -c "import json; from json2html import json2html; print(json2html.convert(json=json.load(open('semgrep-reports/frontend.json'))))" > semgrep-reports/frontend.html
           fi
 
       - name: Upload Semgrep reports
@@ -119,7 +108,6 @@ jobs:
         with:
           name: semgrep-reports
           path: semgrep-reports
-
 
   build_and_push_backend:
     needs: detect_changes
@@ -380,7 +368,6 @@ jobs:
           git add semgrep-report
           git commit -m "chore(report): update semgrep reports on ${{ github.sha }}" || echo "No changes"
           git push origin reports
-
 
 
   deploy-frontend-to-reports:
