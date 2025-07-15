@@ -62,8 +62,9 @@ jobs:
             frontend:
               - 'frontend/**'
 
-  semgrep_scan:
+  semgrep_scan_backend1:
     needs: detect_changes
+    if: needs.detect_changes.outputs.backend1 == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -92,45 +93,67 @@ jobs:
         working-directory: semgrep-html-tool
         run: npm install
 
-      - name: Create scan output directories
-        run: |
-          mkdir -p semgrep-reports/backend1
-          mkdir -p semgrep-reports/backend2
-          mkdir -p semgrep-reports/frontend
-
       - name: Run Semgrep on Backend1
-        if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
-          semgrep --config auto --json --output semgrep-reports/backend1/report.json ./backend1
+          semgrep --config auto --json --output backend1-semgrep-report.json ./backend1
           node --loader ts-node/esm semgrep-html-tool/cli.mjs \
-            -i semgrep-reports/backend1/report.json \
-            -o semgrep-reports/backend1/index.html
+            -i backend1-semgrep-report.json \
+            -o backend1-semgrep-report.html
 
-      - name: Run Semgrep on Backend2
-        if: needs.detect_changes.outputs.backend2 == 'true'
-        run: |
-          semgrep --config auto --json --output semgrep-reports/backend2/report.json ./backend2
-          node --loader ts-node/esm semgrep-html-tool/cli.mjs \
-            -i semgrep-reports/backend2/report.json \
-            -o semgrep-reports/backend2/index.html
-
-      - name: Run Semgrep on Frontend
-        if: needs.detect_changes.outputs.frontend == 'true'
-        run: |
-          semgrep --config auto --json --output semgrep-reports/frontend/report.json ./frontend
-          node --loader ts-node/esm semgrep-html-tool/cli.mjs \
-            -i semgrep-reports/frontend/report.json \
-            -o semgrep-reports/frontend/index.html
-
-      - name: Upload Semgrep reports
+      - name: Upload Semgrep report
         uses: actions/upload-artifact@v4
         with:
-          name: semgrep-reports
-          path: semgrep-reports
+          name: semgrep-report-backend1
+          path: backend1-semgrep-report.html
 
 
-  upload_semgrep_reports:
-    needs: semgrep_scan
+  semgrep_scan_backend2:
+    needs: detect_changes
+    if: needs.detect_changes.outputs.backend2 == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Clone semgrep-html
+        run: git clone https://github.com/returntocorp/semgrep-html.git semgrep-html-tool
+
+      - name: Install semgrep-html dependencies
+        working-directory: semgrep-html-tool
+        run: npm install
+
+      - name: Run Semgrep on Backend1
+        run: |
+          semgrep --config auto --json --output backend2-semgrep-report.json ./backend2
+          node --loader ts-node/esm semgrep-html-tool/cli.mjs \
+            -i backend2-semgrep-report.json \
+            -o backend2-semgrep-report.html
+
+      - name: Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report-backend1
+          path: backend2-semgrep-report.html
+
+  semgrep_scan_frontend:
+    needs: detect_changes
+    if: needs.detect_changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout the repo
@@ -138,29 +161,74 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create scan directory
-        run: mkdir -p gh-pages/scan
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Clone semgrep-html
+        run: git clone https://github.com/returntocorp/semgrep-html.git semgrep-html-tool
+
+      - name: Install semgrep-html dependencies
+        working-directory: semgrep-html-tool
+        run: npm install
+
+      - name: Run Semgrep on Frontend
+        run: |
+          semgrep --config auto --json --output frontend-semgrep-report.json ./frontend
+          node --loader ts-node/esm semgrep-html-tool/cli.mjs \
+            -i frontend-semgrep-report.json \
+            -o frontend-semgrep-report.html
+
+      - name: Upload Semgrep report
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report-frontend
+          path: frontend-semgrep-report.html
+
+  upload_semgrep_reports:
+    needs: 
+      - detect_changes
+      - semgrep_scan_backend1
+      - semgrep_scan_backend2
+      - semgrep_scan_frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - run: mkdir -p gh-pages/scan
 
       - uses: actions/download-artifact@v4
         with:
-          name: semgrep-reports
+          pattern: semgrep-report-*
           path: artifacts
-      
-      - name: Copy semgrep reports
+
+      - if: needs.detect_changes.outputs.backend1 == 'true'
         run: |
-          mkdir -p gh-pages/scan
-          if [ -f artifacts/backend1/index.html ]; then
-            mkdir -p gh-pages/scan/backend1
-            cp artifacts/backend1/index.html gh-pages/scan/backend1/index.html
-          fi
-          if [ -f artifacts/backend2/index.html ]; then
-            mkdir -p gh-pages/scan/backend2
-            cp artifacts/backend2/index.html gh-pages/scan/backend2/index.html
-          fi
-          if [ -f artifacts/frontend/index.html ]; then
-            mkdir -p gh-pages/scan/frontend
-            cp artifacts/frontend/index.html gh-pages/scan/frontend/index.html
-          fi
+          mkdir -p gh-pages/scan/backend1
+          cp artifacts/semgrep-report-backend1/backend1-semgrep-report.html gh-pages/scan/backend1/index.html
+
+      - if: needs.detect_changes.outputs.backend2 == 'true'
+        run: |
+          mkdir -p gh-pages/scan/backend2
+          cp artifacts/semgrep-report-backend2/backend2-semgrep-report.html gh-pages/scan/backend2/index.html
+
+      - if: needs.detect_changes.outputs.frontend == 'true'
+        run: |
+          mkdir -p gh-pages/scan/frontend
+          cp artifacts/semgrep-report-frontend/frontend-semgrep-report.html gh-pages/scan/frontend/index.html
+
       - name: Commit and push Semgrep reports
         run: |
           git config --global user.name "github-actions[bot]"
@@ -171,7 +239,7 @@ jobs:
           git add scan
           git commit -m "chore(report): update semgrep reports on ${{ github.sha }}" || echo "No changes"
           git push origin reports
-
+          
   build_and_push_backend:
     needs: detect_changes
     if: needs.detect_changes.outputs.backend1 == 'true' || needs.detect_changes.outputs.backend2 == 'true'
