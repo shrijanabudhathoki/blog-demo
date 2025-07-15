@@ -362,12 +362,12 @@ jobs:
 
       - if: needs.detect_changes.outputs.backend2 == 'true'
         run: |
-          mkdir -p gh-pages/scan/backend2
+          mkdir -p gh-pages/semgrep-report/backend2
           cp artifacts/backend2.html gh-pages/semgrep-report/backend2/index.html
 
       - if: needs.detect_changes.outputs.frontend == 'true'
         run: |
-          mkdir -p gh-pages/scan/frontend
+          mkdir -p gh-pages/semgrep-report/frontend
           cp artifacts/frontend.html gh-pages/semgrep-report/frontend/index.html
 
       - name: Commit and push Semgrep reports
@@ -377,7 +377,7 @@ jobs:
           git fetch origin reports || true
           git switch reports || git switch --orphan reports
           cp -r gh-pages/* .
-          git add scan
+          git add semgrep-report
           git commit -m "chore(report): update semgrep reports on ${{ github.sha }}" || echo "No changes"
           git push origin reports
 
