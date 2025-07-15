@@ -79,27 +79,39 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Semgrep & Formatter
+      - name: Install Semgrep and jq
         run: |
-          pip install semgrep semgrep-format-better
+          pip install semgrep
+          sudo apt-get update && sudo apt-get install -y jq
+      
+      - name: Download Semgrep HTML template
+        run: |
+          curl -sSL -o html.tpl https://raw.githubusercontent.com/returntocorp/semgrep/develop/semgrep/scripts/html-report-template.html
 
-      - name: Run Semgrep on changed folders
+
+      - name: Run Semgrep scan and generate HTML report
         run: |
           mkdir -p semgrep-reports
 
           if [[ "${{ needs.detect_changes.outputs.backend1 }}" == "true" ]]; then
-            semgrep scan --config auto ./backend1 --json > semgrep-reports/backend1.json
-            semgrep-format-better --input semgrep-reports/backend1.json --output semgrep-reports/backend1.html
+            semgrep --config auto --json ./backend1 > semgrep-reports/backend1.json
+            jq -Rs '{results: fromjson}' < semgrep-reports/backend1.json > semgrep-reports/backend1_data.json
+            cat html.tpl | sed "/__REPORT_JSON__/r semgrep-reports/backend1_data.json" | \
+              sed "/__REPORT_JSON__/d" > semgrep-reports/backend1.html
           fi
 
           if [[ "${{ needs.detect_changes.outputs.backend2 }}" == "true" ]]; then
-            semgrep scan --config auto ./backend2 --json > semgrep-reports/backend2.json
-            semgrep-format-better --input semgrep-reports/backend2.json --output semgrep-reports/backend2.html
+            semgrep --config auto --json ./backend2 > semgrep-reports/backend2.json
+            jq -Rs '{results: fromjson}' < semgrep-reports/backend2.json > semgrep-reports/backend2_data.json
+            cat html.tpl | sed "/__REPORT_JSON__/r semgrep-reports/backend2_data.json" | \
+              sed "/__REPORT_JSON__/d" > semgrep-reports/backend2.html
           fi
 
           if [[ "${{ needs.detect_changes.outputs.frontend }}" == "true" ]]; then
-            semgrep scan --config auto ./frontend --json > semgrep-reports/frontend.json
-            semgrep-format-better --input semgrep-reports/frontend.json --output semgrep-reports/frontend.html
+            semgrep --config auto --json ./frontend > semgrep-reports/frontend.json
+            jq -Rs '{results: fromjson}' < semgrep-reports/frontend.json > semgrep-reports/frontend_data.json
+            cat html.tpl | sed "/__REPORT_JSON__/r semgrep-reports/frontend_data.json" | \
+              sed "/__REPORT_JSON__/d" > semgrep-reports/frontend.html
           fi
 
       - name: Upload Semgrep reports
